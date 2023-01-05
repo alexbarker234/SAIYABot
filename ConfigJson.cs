@@ -15,11 +15,5 @@ namespace SAIYA
         public string MongoToken { get; private set; }
         [JsonProperty("weatherToken")]
         public string WeatherToken { get; private set; }
-        public ConfigJson(string botToken, string mongoToken, string weatherToken)
-        {
-            BotToken = botToken;
-            MongoToken = mongoToken;
-            WeatherToken = weatherToken;
-        }
     }
 }
