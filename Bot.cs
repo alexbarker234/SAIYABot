@@ -2,13 +2,17 @@
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.SlashCommands;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Newtonsoft.Json;
+using SAIYA.Commands;
 using SAIYA.Creatures;
+using SAIYA.Items;
 using SAIYA.Models;
 using SAIYA.Systems;
+using System.Net;
 using System.Reflection;
 using System.Runtime.Versioning;
 using System.Text;
@@ -18,19 +22,23 @@ namespace SAIYA
     public class Bot
     {
         public static DiscordClient Client { get; private set; }
+        public static SlashCommandsExtension SlashCommands { get; private set; }
         public static CommandsNextExtension Commands { get; private set; }
         public static IMongoDatabase Database { get; private set; }
         public static Random rand { get; private set; }
+        public static ConfigJson botConfig { get; private set; }
+        public static HttpClient httpClient { get; private set; }
         public Bot() => RunAsync().GetAwaiter().GetResult();
         private async Task RunAsync()
         {
+            Console.WriteLine("starting");
+            botConfig = LoadConfig();
             rand = new Random();
-
-            var configJson = LoadConfig();
+            httpClient = new HttpClient();
 
             var config = new DiscordConfiguration
             {
-                Token = configJson.Token,
+                Token = botConfig.BotToken,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
                 MinimumLogLevel = LogLevel.Debug,
@@ -40,16 +48,35 @@ namespace SAIYA
             Client.Ready += OnClientReady;
             Client.MessageCreated += OnMessageCreated;
 
+            await WeatherManager.UpdateWeather();
+
             // slash commands
-            var slash = Client.UseSlashCommands();
-            slash.RegisterCommands(Assembly.GetExecutingAssembly(), 923496191411507260);
+            SlashCommands = Client.UseSlashCommands();
+            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), 923496191411507260);
+
+            // regular commands
+            var commandsConfig = new CommandsNextConfiguration
+            {
+                StringPrefixes = new string[] { "!s " },
+                EnableDms = false,
+                EnableMentionPrefix = true,
+                EnableDefaultHelp = false
+            };
+
+            Commands = Client.UseCommandsNext(commandsConfig);
+            Commands.RegisterCommands(Assembly.GetExecutingAssembly());
+            //Commands.RegisterCommands<AdminCommands>();
+
+
+            Client.ComponentInteractionCreated += OnComponentInteract;
 
             // database
-            var mongoClient = new MongoClient(configJson.MongoConnection);
+            var mongoClient = new MongoClient(botConfig.MongoToken);
             Database = mongoClient.GetDatabase("SAIYA");
 
             CreatureLoader.Load();
-
+            ItemLoader.Load();
+            BackgroundTimerFunctions timer = new BackgroundTimerFunctions();
 
             await Client.ConnectAsync();
             await Task.Delay(-1);
@@ -75,12 +102,16 @@ namespace SAIYA
             ulong userID = e.Message.Author.Id, guildID = e.Guild.Id;
 
             User user = await User.GetOrCreateUser(userID, guildID);
-            user.Messages++;
+            user.Statistics.Messages++;
             await ManageUserExperience.UserXP(e, user);
             await user.Save();
 
             // MUST BE RUN AFTER SAVE
             await ManageEggs.EggRoll(client, e, user);
-        }    
+        }
+        private async Task OnComponentInteract(DiscordClient c, ComponentInteractionCreateEventArgs e)
+        {
+            if (e.Id == "fish") await FishingCommands.OnFish(c, e);
+        }
     }
 }

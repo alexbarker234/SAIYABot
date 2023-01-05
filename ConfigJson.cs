@@ -9,9 +9,11 @@ namespace SAIYA
 {
     public struct ConfigJson
     {
-        [JsonProperty("token")]
-        public string Token { get; private set; }
-        [JsonProperty("mongoConnectionString")]
-        public string MongoConnection { get; private set; }
+        [JsonProperty("botToken")]
+        public string BotToken { get; private set; }
+        [JsonProperty("mongoToken")]
+        public string MongoToken { get; private set; }
+        [JsonProperty("weatherToken")]
+        public string WeatherToken { get; private set; }
     }
 }

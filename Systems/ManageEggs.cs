@@ -1,6 +1,7 @@
 ﻿using DSharpPlus;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using MongoDB.Driver;
 using SAIYA.Creatures;
 using SAIYA.Models;
 using System;
@@ -15,12 +16,18 @@ namespace SAIYA.Systems
     {
         public static async Task EggRoll(DiscordClient client, MessageCreateEventArgs e, User user)
         {
-            double secondsSinceRoll = DateTime.Now.Subtract(user.LastEggRoll).Seconds;
+
+            double secondsSinceRoll = DateTime.Now.Subtract(user.LastEggRoll).TotalSeconds;
             int maxEggs = 3;
 
-            if (secondsSinceRoll > 5 && user.Eggs.Length < maxEggs)
+            if (secondsSinceRoll > 300 && user.Eggs.Length < maxEggs)
             {
-                double eggChance = 1;
+                Utilities.WriteLineColor($"{e.Message.Author.Username} rolled for an egg", ConsoleColor.Yellow);
+
+                var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
+                users.UpdateOne(x => x.UserID == user.UserID && x.GuildID == user.GuildID, Builders<User>.Update.Set(x => x.LastEggRoll, DateTime.Now));
+
+                double eggChance = 0.1;
 
                 if (Bot.rand.NextDouble() < eggChance)
                 {
@@ -30,6 +37,9 @@ namespace SAIYA.Systems
                         {
                             await e.Message.CreateReactionAsync(emoji);
                         }
+
+                        Utilities.WriteLineColor($"{e.Message.Author.Username} obtained a {creature.Name} egg!", ConsoleColor.Green);
+
                         await user.AddEgg(creature);
                     }
                 }

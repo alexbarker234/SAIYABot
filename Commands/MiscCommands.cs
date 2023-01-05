@@ -1,10 +1,11 @@
-﻿using DSharpPlus.Entities;
+﻿using DSharpPlus;
+using DSharpPlus.Entities;
+using DSharpPlus.EventArgs;
 using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
 using SAIYA.Creatures;
 using SAIYA.Models;
-using System.Drawing;
-using System.Runtime.Versioning;
+using SAIYA.Systems;
 
 namespace SAIYA.Commands
 {
@@ -49,91 +50,27 @@ namespace SAIYA.Commands
 
             }, true);
         }
-        [SlashCommand("testcreature", "test creatures")]
-        public async Task TestCreature(InteractionContext ctx)
-        {
-            Creature creature = CreatureLoader.creatures[0];
 
-            using (var fs = new FileStream(creature.CreatureTexture, FileMode.Open, FileAccess.Read))
-            {
-                DiscordInteractionResponseBuilder builder = new DiscordInteractionResponseBuilder();
-                builder.AddFile($"image.png", fs);
-                builder.AddEmbed(new DiscordEmbedBuilder()
-                {
-                    Title = $"{creature.Name}",
-                    Description = $"{creature.Description}",
-                    ImageUrl = "attachment://image.png"
-                }).AsEphemeral(true);
-                await ctx.CreateResponseAsync(DSharpPlus.InteractionResponseType.ChannelMessageWithSource, builder);
-            }
+        [SlashCommand("weather", "check the weather")]
+        public async Task Weather(InteractionContext ctx)
+        {
+            DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
+                .WithColor(new DiscordColor("#cce5ed"))
+                .WithTitle("Current Weather")
+                .AddField("⛅ Weather", $"{WeatherManager.Weather}\n'{WeatherManager.WeatherDescription.ToTitleCase()}'")
+                .AddField("🌡 Temperature", WeatherManager.Temperature.ToString("0.##") + "°C")
+                .AddField("💨 Wind speed", WeatherManager.WindSpeedMPS.ToString("0.##") + "m/s\n" + WeatherManager.WindSpeedKMH.ToString("0.##") + "km/h")
+                .AddField("☁️ Clouds", WeatherManager.Clouds * 100 + "%")
+                .AddField("💧 Humidity", WeatherManager.Humidity * 100 + "%")
+                .AddField("🌙 Moon Phase", WeatherManager.CurrentMoonPhaseString);
+
+            await ctx.CreateResponseAsync(embed);
         }
-        [SlashCommand("eggs", "view your eggs")]
-        [SupportedOSPlatform("windows")]
-        public async Task Eggs(InteractionContext ctx)
+        [SlashCommand("inventory", "check your inventory")]
+        public async Task Inventory(InteractionContext ctx)
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
 
-            if (user.Eggs.Length == 0)
-            {
-                await ctx.CreateResponseAsync("You have no eggs", true);
-                return;
-            }
-            using (var ms = new MemoryStream())
-            {
-                // DRAW EGGS
-                int maxHeight = 0;
-                int maxWidth = 0;
-                for (int i = 0; i < user.Eggs.Length; i++)
-                {
-                    Image eggimage = Image.FromFile(user.Eggs[i].Creature.EggTexture);
-                    if (eggimage.Width > maxWidth) maxWidth = eggimage.Width;
-                    if (eggimage.Height > maxHeight) maxHeight = eggimage.Height;
-                }
-                int eggCanvasWidth = maxWidth + 10; 
-
-                Bitmap b = new Bitmap(eggCanvasWidth * user.Eggs.Length, maxHeight);
-                using (Graphics g = Graphics.FromImage(b))
-                {
-                    int x = eggCanvasWidth / 2; 
-                    for (int i = 0; i < user.Eggs.Length; i++)
-                    {
-                        Image eggimage = Image.FromFile(user.Eggs[i].Creature.EggTexture);
-                        g.DrawImage(eggimage, x - eggimage.Width / 2, maxHeight - eggimage.Height, eggimage.Width, eggimage.Height);
-                        x += eggCanvasWidth;
-                    }
-                }
-                b.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
-                ms.Seek(0, SeekOrigin.Begin);
-                b.Dispose();
-
-                // ACTUAL MESSAGE
-                DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
-                  .WithColor(new DiscordColor("#eb98de"))
-                  .WithTitle($"Eggs")
-                  .WithImageUrl("attachment://image.png");
-
-                for (int i = 0; i < user.Eggs.Length; i++)
-                {
-                    Creature egg = user.Eggs[i].Creature;
-                    if (egg == null) continue;
-
-                    int sinceObtained = (int)(DateTime.UtcNow.Subtract(user.Eggs[i].DateObtained).TotalSeconds);
-                    int untilHatchSeconds = egg.HatchTime - sinceObtained;
-                    string willHatch = $"<t:{DateTime.UtcNow.ToElapsedSeconds() + untilHatchSeconds}:f>";
-                    string untilHatch = Utilities.ToCountdown(untilHatchSeconds);
-
-                    embed.AddField($"Egg {i + 1} ", $"Hatches in {untilHatch} at\n{willHatch}\n", true);
-                }
-                DiscordInteractionResponseBuilder builder = new DiscordInteractionResponseBuilder();
-                builder.AddFile($"image.png", ms);
-                builder.AddEmbed(embed).AsEphemeral(true);
-                await ctx.CreateResponseAsync(DSharpPlus.InteractionResponseType.ChannelMessageWithSource, builder);
-            }
         }
-    }
-    public static class Extensions
-    {
-        public static string ToPing(this ulong obj) => $"<@{obj}>";
-        public static int ToElapsedSeconds(this DateTime time) => (int)(time.Subtract(DateTime.UnixEpoch).TotalSeconds);
     }
 }
