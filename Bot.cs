@@ -88,9 +88,25 @@ namespace SAIYA
         private ConfigJson LoadConfig()
         {
             var fileContents = string.Empty;
-            using (var sr = new StreamReader("config.json", new UTF8Encoding(false)))
-                fileContents = sr.ReadToEnd();
-            return JsonConvert.DeserializeObject<ConfigJson>(fileContents);
+
+            // VS
+            if (File.Exists("config.json"))
+            {
+                using (var sr = new StreamReader("config.json", new UTF8Encoding(false)))
+                    fileContents = sr.ReadToEnd();
+
+                Environment.SetEnvironmentVariable("Test1", "Value1");
+
+                return JsonConvert.DeserializeObject<ConfigJson>(fileContents);
+            }
+            // REPLIT
+            else
+            {
+                return new ConfigJson(
+                    Environment.GetEnvironmentVariable("BotToken"),
+                    Environment.GetEnvironmentVariable("MongoToken"),
+                    Environment.GetEnvironmentVariable("WeatherToken"));
+            }
         }
 
         private Task OnClientReady(DiscordClient client, ReadyEventArgs e)
