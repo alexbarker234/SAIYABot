@@ -75,7 +75,7 @@ namespace SAIYA.Commands
                     foreach (Fish fish in fished)
                     {
                         string emoji = Utilities.TryGetEmojiFromWarehouse(Bot.Client, fish.Name, out var emojiOut) ? emojiOut : "";
-                        caughtString += $"{emoji}{fish.Name}";
+                        caughtString += $"{emoji}{fish.Name}\n";
 
                         await user.AddToInventory(new DatabaseInventoryItem(fish.Name, 1, DatabaseInventoryItem.Tags.Fish));
                     }
@@ -132,11 +132,11 @@ namespace SAIYA.Commands
         public static bool TryChooseFish(User user, out Fish fish)
         {
             var weightSum = 0.0;
-            foreach (Fish curFish in FishLoader.fish)
+            foreach (Fish curFish in FishLoader.fish.Values)
                 weightSum += curFish.Weight(user);
 
             var pickPower = Bot.rand.NextDouble() * weightSum;
-            foreach (Fish curFish in FishLoader.fish)
+            foreach (Fish curFish in FishLoader.fish.Values)
             {
                 var weight = curFish.Weight(user);
                 if (pickPower <= weight)

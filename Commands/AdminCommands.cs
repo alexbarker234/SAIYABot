@@ -16,7 +16,7 @@ namespace SAIYA.Commands
         {
             if (ctx.User.Id != 283182274474672128) return;
 
-            Creature creature = CreatureLoader.creatures[0];
+            Creature creature = CreatureLoader.creatures.Values.ToList()[0];
 
             using (var fs = new FileStream(creature.CreatureTexture, FileMode.Open, FileAccess.Read))
             {
@@ -38,8 +38,11 @@ namespace SAIYA.Commands
             if (ctx.User.Id != 283182274474672128) return;
             var cmdUser = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
             var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
-            var update = Builders<User>.Update.Push(x => x.Eggs, new DatabaseEgg { Name = "Bleap", DateObtained = DateTime.Now.AddDays(-1) });
-            await users.UpdateOneAsync(user => user.UserID == cmdUser.UserID && user.GuildID == cmdUser.GuildID, update);
+
+            // give egg that takes 2 mins to hatch
+            Creature random = Bot.rand.Next(CreatureLoader.creatures.Values.ToList());
+            DatabaseEgg egg = new DatabaseEgg { Name = random.Name, DateObtained = DateTime.Now.AddSeconds(-random.HatchTime + 120) };
+            await users.UpdateOneAsync(user => user.UserID == cmdUser.UserID && user.GuildID == cmdUser.GuildID, Builders<User>.Update.Push(x => x.Eggs, egg));
 
             await ctx.Message.CreateReactionAsync(DiscordEmoji.FromUnicode("👍"));
         }

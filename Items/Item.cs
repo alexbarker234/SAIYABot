@@ -5,7 +5,7 @@ namespace SAIYA.Items
 {
     public static class ItemLoader
     {
-        public static List<Item> items = new();
+        public static Dictionary<string, Item> items = new();
         public static void Load()
         {
             items = new();
@@ -14,10 +14,10 @@ namespace SAIYA.Items
                 if (!type.IsAbstract && type.IsSubclassOf(typeof(Item)))
                 {
                     var item = (Item)Activator.CreateInstance(type, null);
-                    items.Add(item);
+                    items.Add(item.Name, item);
 
                     if (type.IsSubclassOf(typeof(Fish)))
-                        FishLoader.fish.Add(item as Fish);
+                        FishLoader.fish.Add(item.Name, item as Fish);
                 }
             }
         }

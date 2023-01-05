@@ -85,7 +85,7 @@ namespace SAIYA.Commands
                 {
                     creatureText += discordEmoji;
                 }
-                creatureText += $" {creatureItem.Name}: ***{creatureItem.Count}***";
+                creatureText += $" {creatureItem.Name}: ***{creatureItem.Count}***\n";
                 total += creatureItem.Count;
             }
 
@@ -97,7 +97,7 @@ namespace SAIYA.Commands
                 .AddField("Total", total.ToString(), true);
             await ctx.CreateResponseAsync(embed, true);
         }
-        [SlashCommand("bestiary", "view your creatures")]
+        [SlashCommand("bestiary", "view all creatures")]
         public async Task Bestiary(InteractionContext ctx)
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
@@ -105,7 +105,7 @@ namespace SAIYA.Commands
             List<string> creaturesGot = new();
             foreach (DatabaseCreature creatureItem in user.Creatures) creaturesGot.Add(creatureItem.Name);
 
-            foreach (Creature creature in CreatureLoader.creatures)
+            foreach (Creature creature in CreatureLoader.creatures.Values)
             {
                 var emojiName = Utilities.ScrambleString(creature.Name) + "Black";
                 var creatureName = "?????";

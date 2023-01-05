@@ -120,7 +120,7 @@ namespace SAIYA.Models
             int existingIndex = HasItem(Creatures, toHatch.Name);
 
             if (existingIndex == -1) update = update.Push(x => x.Creatures, new DatabaseCreature(toHatch.Name, 1));
-            else update = update.Set(x => x.Creatures[existingIndex].Count, Creatures[existingIndex].Count + 1);
+            else update = update.Inc(x => x.Creatures[existingIndex].Count, 1);
             await users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
         }
         public async Task AddToInventory(DatabaseInventoryItem item)
@@ -130,8 +130,28 @@ namespace SAIYA.Models
             int existingIndex = HasItem(Inventory, item.Name);
             var update = Builders<User>.Update.Push(x => x.Inventory, item);
             if (existingIndex != -1)
-                update = Builders<User>.Update.Set(x => x.Inventory[existingIndex].Count, Inventory[existingIndex].Count + item.Count);
+                update = Builders<User>.Update.Inc(x => x.Inventory[existingIndex].Count, item.Count);
 
+            await users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
+        }
+        /// <summary> Returns the amount successfully removed </summary>
+        public async Task<int> RemoveFromInventory(DatabaseInventoryItem item, int toRemove)
+        {
+            var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
+
+            int index = HasItem(Inventory, item.Name);
+            if (index == -1) return 0;
+
+            toRemove = Math.Min(toRemove, Inventory[index].Count);
+
+            var update = Builders<User>.Update.Inc(x => x.Inventory[index].Count, -toRemove);
+            await users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
+            return toRemove;
+        }
+        public async Task AddCredits(int amount)
+        {
+            var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
+            var update = Builders<User>.Update.Inc(x => x.Credits, amount).Inc(x => x.Statistics.LifetimeCredits, amount);
             await users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
         }
         private int HasItem<T>(T[] array, string name) where T : DatabaseItem
@@ -196,7 +216,7 @@ namespace SAIYA.Models
         [BsonElement("obtained")]
         public DateTime DateObtained { get; set; }
         [BsonIgnore]
-        public Creature Creature => CreatureLoader.creatures.FirstOrDefault(creature => creature.Name == Name);
+        public Creature Creature => CreatureLoader.creatures.Values.FirstOrDefault(creature => creature.Name == Name);
 
         [BsonIgnore]
         public int SecondsSinceObtained => (int)(DateTime.UtcNow.Subtract(DateObtained).TotalSeconds);

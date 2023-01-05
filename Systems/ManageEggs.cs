@@ -48,11 +48,11 @@ namespace SAIYA.Systems
         private static bool TryChooseEgg(User user, out Creature creature)
         {
             var weightSum = 0.0;
-            foreach (Creature curCreature in CreatureLoader.creatures)
+            foreach (Creature curCreature in CreatureLoader.creatures.Values)
                 weightSum += curCreature.Weight(user);
 
             var pickPower = Bot.rand.NextDouble() * weightSum;
-            foreach (Creature curCreature in CreatureLoader.creatures)
+            foreach (Creature curCreature in CreatureLoader.creatures.Values)
             {
                 var weight = curCreature.Weight(user);
                 if (pickPower <= weight)

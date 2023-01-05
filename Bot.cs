@@ -2,6 +2,7 @@
 using DSharpPlus.CommandsNext;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
+using DSharpPlus.Exceptions;
 using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.SlashCommands;
 using Microsoft.Extensions.Logging;
@@ -47,10 +48,12 @@ namespace SAIYA
             Client = new DiscordClient(config);
             Client.Ready += OnClientReady;
             Client.MessageCreated += OnMessageCreated;
+            Client.ComponentInteractionCreated += OnComponentInteract;
 
             await WeatherManager.UpdateWeather();
 
             // slash commands
+
             SlashCommands = Client.UseSlashCommands();
             SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), 923496191411507260);
 
@@ -68,7 +71,6 @@ namespace SAIYA
             //Commands.RegisterCommands<AdminCommands>();
 
 
-            Client.ComponentInteractionCreated += OnComponentInteract;
 
             // database
             var mongoClient = new MongoClient(botConfig.MongoToken);
@@ -80,6 +82,7 @@ namespace SAIYA
 
             await Client.ConnectAsync();
             await Task.Delay(-1);
+
         }
 
         private ConfigJson LoadConfig()

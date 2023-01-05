@@ -4,7 +4,7 @@ namespace SAIYA.Items
 {
     public static class FishLoader
     {
-        public static List<Fish> fish = new();
+        public static Dictionary<string, Fish> fish = new();
     }
     public abstract class Fish : Item
     {
