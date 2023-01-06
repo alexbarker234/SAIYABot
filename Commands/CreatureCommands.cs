@@ -10,7 +10,7 @@ namespace SAIYA.Commands
 {
     public class CreatureCommands : ApplicationCommandModule
     {
-        [SlashCommand("eggs", "view your eggs")]
+        [SlashCommand("eggs", "View your eggs")]
         [SupportedOSPlatform("windows")]
         public async Task Eggs(InteractionContext ctx)
         {
@@ -72,7 +72,7 @@ namespace SAIYA.Commands
                 await ctx.CreateResponseAsync(DSharpPlus.InteractionResponseType.ChannelMessageWithSource, builder);
             }
         }
-        [SlashCommand("creatures", "view your creatures")]
+        [SlashCommand("creatures", "View your creatures")]
         public async Task Creatures(InteractionContext ctx)
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
@@ -97,7 +97,7 @@ namespace SAIYA.Commands
                 .AddField("Total", total.ToString(), true);
             await ctx.CreateResponseAsync(embed, true);
         }
-        [SlashCommand("bestiary", "view all creatures")]
+        [SlashCommand("bestiary", "View all creatures")]
         public async Task Bestiary(InteractionContext ctx)
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);

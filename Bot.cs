@@ -83,7 +83,7 @@ namespace SAIYA
 
             await Client.ConnectAsync();
             await Task.Delay(-1);
-
+            await timer.SetActivity();
         }
 
         private ConfigJson LoadConfig()
@@ -93,6 +93,7 @@ namespace SAIYA
                 fileContents = sr.ReadToEnd();
             return JsonConvert.DeserializeObject<ConfigJson>(fileContents);
         }
+
 
         private Task OnClientReady(DiscordClient client, ReadyEventArgs e)
         {
@@ -115,7 +116,26 @@ namespace SAIYA
         }
         private async Task OnComponentInteract(DiscordClient c, ComponentInteractionCreateEventArgs e)
         {
-            if (e.Id == "fish") await FishingCommands.OnFish(c, e);
+            switch (e.Id)
+            {
+                case "fish":
+                    await FishingCommands.OnFish(c, e);
+                    break;
+                case "aboutGeneral":
+                    await HelpCommands.GoAboutGeneral(e);
+                    break;
+                case "aboutCreatures":
+                    await HelpCommands.GoAboutCreatures(e);
+                    break;
+                case "aboutFishing":
+                    await HelpCommands.GoAboutFishing(e);
+                    break;
+                case "aboutCommands":
+                    await HelpCommands.GoAboutHelp(e);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }

@@ -56,7 +56,7 @@ namespace SAIYA.Commands
 
             try
             {
-                await e.Interaction.CreateResponseAsync(InteractionResponseType.UpdateMessage, null);
+                await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
 
                 // FISH
                 if (!onCD)

@@ -1,4 +1,5 @@
 ﻿using DSharpPlus;
+using DSharpPlus.Entities;
 using MongoDB.Driver;
 using SAIYA.Models;
 using SAIYA.Systems;
@@ -21,6 +22,8 @@ namespace SAIYA
         {
             while (await timer.WaitForNextTickAsync())
             {
+                if (secondsElapsed % TimeSpan.FromHours(1).TotalSeconds == 0) await SetActivity();
+
                 secondsElapsed += (int)repeatDelay.TotalSeconds;
 
                 var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
@@ -47,5 +50,12 @@ namespace SAIYA
                 }
             }
         }
+        private List<DiscordActivity> activities = new()
+        {
+            new DiscordActivity("humans be small", ActivityType.Watching),
+            new DiscordActivity("with your mind", ActivityType.Playing),
+            new DiscordActivity("you", ActivityType.ListeningTo),
+        };
+        public async Task SetActivity() => await Bot.Client.UpdateStatusAsync(Bot.rand.Next(activities));
     }
 }
