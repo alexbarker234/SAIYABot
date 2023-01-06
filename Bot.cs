@@ -56,7 +56,7 @@ namespace SAIYA
             // slash commands
 
             SlashCommands = Client.UseSlashCommands();
-            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), 923496191411507260);
+            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly());
 
             // regular commands
             var commandsConfig = new CommandsNextConfiguration
