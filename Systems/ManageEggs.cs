@@ -17,7 +17,7 @@ namespace SAIYA.Systems
         public static async Task EggRoll(DiscordClient client, MessageCreateEventArgs e, User user)
         {
 
-            double secondsSinceRoll = DateTime.Now.Subtract(user.LastEggRoll).TotalSeconds;
+            double secondsSinceRoll = DateTime.UtcNow.Subtract(user.LastEggRoll).TotalSeconds;
             int maxEggs = 3;
 
             if (secondsSinceRoll > 300 && user.Eggs.Length < maxEggs)

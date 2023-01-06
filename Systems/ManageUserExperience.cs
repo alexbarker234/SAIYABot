@@ -9,7 +9,7 @@ namespace SAIYA.Systems
         public static async Task UserXP(MessageCreateEventArgs e, User user)
         {
             int xpCooldown = 60;
-            double secondsSinceRoll = DateTime.Now.Subtract(user.LastExperience).TotalSeconds;
+            double secondsSinceRoll = DateTime.UtcNow.Subtract(user.LastExperience).TotalSeconds;
             if (secondsSinceRoll > xpCooldown)
             {
                 user.Experience += Bot.rand.Next(15, 25);
@@ -31,7 +31,7 @@ namespace SAIYA.Systems
                     if (role != null)
                         await (e.Author as DiscordMember).GrantRoleAsync(role);
 
-                    await e.Message.CreateReactionAsync(DiscordEmoji.FromUnicode("⬆️"));
+                    //await e.Message.CreateReactionAsync(DiscordEmoji.FromUnicode("⬆️"));
                 }
             }
         }

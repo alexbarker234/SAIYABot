@@ -49,6 +49,7 @@ namespace SAIYA
             Client.Ready += OnClientReady;
             Client.MessageCreated += OnMessageCreated;
             Client.ComponentInteractionCreated += OnComponentInteract;
+            
 
             await WeatherManager.UpdateWeather();
 
