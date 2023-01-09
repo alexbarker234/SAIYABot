@@ -1,11 +1,13 @@
-﻿using SAIYA.Creatures;
+﻿using SAIYA.Content.Plants;
 using System.Reflection;
 
-namespace SAIYA.Items
+namespace SAIYA.Content.Items
 {
     public static class ItemLoader
     {
         public static Dictionary<string, Item> items = new();
+        public static Dictionary<string, Plant> plants = new();
+        public static Dictionary<string, Fish> fish = new();
         public static void Load()
         {
             items = new();
@@ -17,20 +19,11 @@ namespace SAIYA.Items
                     items.Add(item.Name, item);
 
                     if (type.IsSubclassOf(typeof(Fish)))
-                        FishLoader.fish.Add(item.Name, item as Fish);
+                        fish.Add(item.Name, item as Fish);
+                    else if (type.IsSubclassOf(typeof(Plant)))
+                        plants.Add(item.Name, item as Plant);
                 }
             }
         }
     }
-    public abstract class Item
-    {
-        public virtual string Name { get; }
-        public virtual string Description { get; } = "This item hasn't been documented yet";
-        public virtual int Price { get; } = 0;
-        public Item()
-        {
-            if (Name == null) Name = GetType().Name;
-        }
-    }
-
 }

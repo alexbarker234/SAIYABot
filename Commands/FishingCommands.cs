@@ -3,8 +3,7 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
-using SAIYA.Creatures;
-using SAIYA.Items;
+using SAIYA.Content.Items;
 using SAIYA.Models;
 using SAIYA.Systems;
 
@@ -77,17 +76,16 @@ namespace SAIYA.Commands
                         string emoji = Utilities.TryGetEmojiFromWarehouse(Bot.Client, fish.Name, out var emojiOut) ? emojiOut : "";
                         caughtString += $"{emoji}{fish.Name}\n";
 
-                        await user.AddToInventory(new DatabaseInventoryItem(fish.Name, 1, DatabaseInventoryItem.Tags.Fish));
+                        await user.AddToInventory(new DatabaseInventoryItem(fish.Name, 1));
                     }
                     if (caughtString == "") caughtString = "Nothing :(";
 
 
                     // UPDATE USER IN DB - user object is now old
-                    var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
                     var update = Builders<User>.Update
                         .Inc(x => x.Statistics.FishCaught, fished.Count)
                         .Inc(x => x.Statistics.TimesFished, 1);
-                    await users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
+                    await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
 
 
                     DiscordEmbedBuilder embed = new DiscordEmbedBuilder(e.Message.Embeds[0]);
@@ -132,11 +130,11 @@ namespace SAIYA.Commands
         public static bool TryChooseFish(User user, out Fish fish)
         {
             var weightSum = 0.0;
-            foreach (Fish curFish in FishLoader.fish.Values)
+            foreach (Fish curFish in ItemLoader.fish.Values)
                 weightSum += curFish.Weight(user);
 
             var pickPower = Bot.rand.NextDouble() * weightSum;
-            foreach (Fish curFish in FishLoader.fish.Values)
+            foreach (Fish curFish in ItemLoader.fish.Values)
             {
                 var weight = curFish.Weight(user);
                 if (pickPower <= weight)

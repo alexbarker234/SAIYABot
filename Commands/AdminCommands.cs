@@ -3,7 +3,7 @@ using DSharpPlus.CommandsNext.Attributes;
 using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
-using SAIYA.Creatures;
+using SAIYA.Content.Creatures;
 using SAIYA.Models;
 using SAIYA.Systems;
 
@@ -37,12 +37,11 @@ namespace SAIYA.Commands
         {
             if (ctx.User.Id != 283182274474672128) return;
             var cmdUser = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
-            var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
 
             // give egg that takes 2 mins to hatch
             Creature random = Bot.rand.Next(CreatureLoader.creatures.Values.ToList());
             DatabaseEgg egg = new DatabaseEgg { Name = random.Name, DateObtained = DateTime.Now.AddSeconds(-random.HatchTime + 120) };
-            await users.UpdateOneAsync(user => user.UserID == cmdUser.UserID && user.GuildID == cmdUser.GuildID, Builders<User>.Update.Push(x => x.Eggs, egg));
+            await Bot.Users.UpdateOneAsync(user => user.UserID == cmdUser.UserID && user.GuildID == cmdUser.GuildID, Builders<User>.Update.Push(x => x.Eggs, egg));
 
             await ctx.Message.CreateReactionAsync(DiscordEmoji.FromUnicode("👍"));
         }

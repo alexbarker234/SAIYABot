@@ -2,7 +2,7 @@
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using MongoDB.Driver;
-using SAIYA.Creatures;
+using SAIYA.Content.Creatures;
 using SAIYA.Models;
 using System;
 using System.Collections.Generic;
@@ -24,8 +24,7 @@ namespace SAIYA.Systems
             {
                 Utilities.WriteLineColor($"{e.Message.Author.Username} rolled for an egg", ConsoleColor.Yellow);
 
-                var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
-                users.UpdateOne(x => x.UserID == user.UserID && x.GuildID == user.GuildID, Builders<User>.Update.Set(x => x.LastEggRoll, DateTime.Now));
+                Bot.Users.UpdateOne(x => x.UserID == user.UserID && x.GuildID == user.GuildID, Builders<User>.Update.Set(x => x.LastEggRoll, DateTime.Now));
 
                 double eggChance = 0.1;
 

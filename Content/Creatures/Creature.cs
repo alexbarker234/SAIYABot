@@ -3,24 +3,8 @@ using SAIYA.Systems;
 using System.Drawing;
 using System.Reflection;
 
-namespace SAIYA.Creatures
+namespace SAIYA.Content.Creatures
 {
-    public static class CreatureLoader
-    {
-        public static Dictionary<string, Creature> creatures = new();
-        public static void Load()
-        {
-            creatures = new();
-            foreach (Type type in Assembly.GetExecutingAssembly().GetTypes())
-            {
-                if (!type.IsAbstract && type.IsSubclassOf(typeof(Creature)))
-                {
-                    var creature = (Creature)Activator.CreateInstance(type, null);
-                    creatures.Add(creature.Name, creature);
-                }
-            }
-        }
-    }
     public abstract class Creature
     {
         public virtual string Name { get; }
@@ -34,7 +18,7 @@ namespace SAIYA.Creatures
         public string EggTexture = null;
         public Creature()
         {
-            if (Name == null) Name = GetType().Name;
+            Name ??= GetType().Name;
             CreatureTexture = Directory.GetCurrentDirectory() + "\\Assets\\Creatures\\" + GetType().Name + ".png";
             EggTexture = Directory.GetCurrentDirectory() + "\\Assets\\Creatures\\" + GetType().Name + "Egg.png";
         }
@@ -134,7 +118,7 @@ namespace SAIYA.Creatures
     {
         public override string Requirements => "Every Second Week";
         public override int HatchTime => (int)TimeSpan.FromHours(4).TotalSeconds;
-        public override double Weight(User user) => (Utilities.GetWATime.DayOfYear / 7) % 2 == 0 ? 0.3 : 0;
+        public override double Weight(User user) => Utilities.GetWATime.DayOfYear / 7 % 2 == 0 ? 0.3 : 0;
     }
     public class Pyra : Creature
     {

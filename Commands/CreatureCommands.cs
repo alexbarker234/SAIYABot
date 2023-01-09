@@ -1,6 +1,6 @@
 ﻿using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
-using SAIYA.Creatures;
+using SAIYA.Content.Creatures;
 using SAIYA.Models;
 using SAIYA.Systems;
 using System.Drawing;

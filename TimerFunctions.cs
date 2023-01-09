@@ -26,8 +26,7 @@ namespace SAIYA
 
                 secondsElapsed += (int)repeatDelay.TotalSeconds;
 
-                var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
-                var userList = await users.Find(p => true).ToListAsync();
+                var userList = await Bot.Users.Find(p => true).ToListAsync();
                 foreach (User user in userList)
                 {
                     List<DatabaseEgg> toHatch = new();

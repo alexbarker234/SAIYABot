@@ -3,8 +3,8 @@ using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
-using SAIYA.Creatures;
-using SAIYA.Items;
+using SAIYA.Content.Creatures;
+using SAIYA.Content.Items;
 using SAIYA.Models;
 using SAIYA.Systems;
 
@@ -18,25 +18,88 @@ namespace SAIYA.Commands
             Console.WriteLine("pinged");
             await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, new DiscordInteractionResponseBuilder().WithContent("Hello, darling :)").AsEphemeral(true));
         }
+        #region leaderboards
         [SlashCommand("leaderboards", "check the level leaderboards")]
-        public async Task Leaderboards(InteractionContext ctx)
+        public async Task Leaderboards(InteractionContext ctx,
+            [ChoiceProvider(typeof(leaderboardOption))]
+            [Option("Category", "Which leaderboard to view")] double category)
         {
-            var users = Bot.Database.GetCollection<User>("SAIYA_USERS");
-
-            List<User> userList = await users.Find(p => true).ToListAsync();
-
-            userList.Sort((User x, User y) => -x.TotalExperience.CompareTo(y.TotalExperience));
-
-            string content = $"`{ctx.Guild.Name}'s Level Leaderboard`\n";
-            int rank = 1;
-            userList.ForEach(user => content += $"**{rank++}:** {user.UserID.ToPing()}: Level {user.Level} {user.Experience}/{user.ExperienceRequired}xp\n");
-
-            await ctx.CreateResponseAsync(embed: new DiscordEmbedBuilder()
+            string title = "";
+            string users = "";
+            string details = "";
+            List<User> userList = await Bot.Users.Find(p => p.GuildID == ctx.Guild.Id).ToListAsync();
+            if (category == (int)LeaderboardCategory.Levels)
             {
-                Title = "Leaderboard",
-                Description = content,
-            }, true);
+                title = "Experience";
+                userList.Sort((User x, User y) => -x.TotalExperience.CompareTo(y.TotalExperience));
+
+                int rank = 1;
+                foreach (User user in userList)
+                {
+                    users += $"**{rank++}:** {user.UserID.ToPing()}:\n";
+                    details += $"Level {user.Level} {user.Experience}/{user.ExperienceRequired}xp\n";
+                }
+            }
+            else if (category == (int)LeaderboardCategory.CreaturesTotal)
+            {
+                title = "Creature";
+                userList = userList.Where(x => x.Creatures.Length != 0).ToList();
+                userList.Sort((User x, User y) => -x.TotalCreatures.CompareTo(y.TotalCreatures));
+
+                users += $"**Total Creatures:** {userList.Sum(x => x.TotalCreatures)}\n\n";
+                details += "---\n\n";
+
+                int rank = 1;
+                foreach (User user in userList)
+                {
+                    users += $"**{rank++}:** {user.UserID.ToPing()}:\n";
+                    details += $"{user.TotalCreatures} creatures\n";
+                }
+            }
+            else if (category == (int)LeaderboardCategory.CreatureCompletion)
+            {
+                title = "Bestiary Completion";
+                userList = userList.Where(x => x.Creatures.Length != 0).ToList();
+                userList.Sort((User x, User y) => -x.BestiaryCompletion.CompareTo(y.BestiaryCompletion));
+
+                int rank = 1;
+                foreach(User user in userList)
+                {
+                    users += $"**{rank++}:** {user.UserID.ToPing()}:\n";
+                    details += $"{user.BestiaryCompletion}/{CreatureLoader.creatures.Count} creatures\n";
+                }
+            }
+            if (users == "") users = "No Results";
+            DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
+            {
+                Author = new DiscordEmbedBuilder.EmbedAuthor { Name = $"{ctx.Guild.Name}'s {title} Leaderboard", IconUrl = ctx.Guild.IconUrl }
+            }
+            .AddField("User", users, true)
+            .AddField("Details", details, true);
+
+            await ctx.CreateResponseAsync(embed: embed, true);
         }
+        public enum LeaderboardCategory : int
+        {
+            Levels,
+            CreaturesTotal,
+            CreatureCompletion,
+        }
+        public class leaderboardOption : IChoiceProvider
+        {
+            #pragma warning disable CS1998
+            public async Task<IEnumerable<DiscordApplicationCommandOptionChoice>> Provider()
+            {
+                return new DiscordApplicationCommandOptionChoice[] {
+                    new DiscordApplicationCommandOptionChoice("Levels", (int)LeaderboardCategory.Levels),
+                    new DiscordApplicationCommandOptionChoice("Total Creatures", (int)LeaderboardCategory.CreaturesTotal),
+                    new DiscordApplicationCommandOptionChoice("Bestiary Completion", (int)LeaderboardCategory.CreatureCompletion),
+                };
+            }
+            #pragma warning restore CS1998
+        }
+
+        #endregion
         [SlashCommand("level", "check your level")]
         public async Task Level(InteractionContext ctx)
         {
@@ -70,7 +133,7 @@ namespace SAIYA.Commands
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
 
-            List<DatabaseInventoryItem> fishList = user.Inventory.Where(x => x.Tag == DatabaseInventoryItem.Tags.Fish && x.Count != 0).ToList();
+            List<DatabaseInventoryItem> fishList = user.Inventory.Where(x => x.Item.Tag == ItemTag.Fish && x.Count != 0).ToList();
 
             var creditEmoji = Utilities.GetEmojiFromWarehouse(ctx.Client, "flarin", "💰");
 
@@ -80,7 +143,7 @@ namespace SAIYA.Commands
 
             foreach (DatabaseInventoryItem curFish in fishList)
             {
-                if (FishLoader.fish.TryGetValue(curFish.Name, out var fish))
+                if (ItemLoader.fish.TryGetValue(curFish.Name, out var fish))
                 {
                     string emoji = Utilities.TryGetEmojiFromWarehouse(Bot.Client, curFish.Name, out var emojiOut) ? emojiOut : "";
                     fishText += $"{emoji}{curFish.Name}: ***{curFish.Count}***\n";

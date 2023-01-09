@@ -1,12 +1,8 @@
-﻿using DSharpPlus;
-using DSharpPlus.Entities;
-using DSharpPlus.EventArgs;
+﻿using DSharpPlus.Entities;
 using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
-using SAIYA.Creatures;
-using SAIYA.Items;
+using SAIYA.Content.Items;
 using SAIYA.Models;
-using SAIYA.Systems;
 
 namespace SAIYA.Commands
 {
@@ -33,7 +29,7 @@ namespace SAIYA.Commands
 
             if (category == (int)SellCategory.Fish)
             {
-                List<DatabaseInventoryItem> items = user.Inventory.Where(x => x.Tag == DatabaseInventoryItem.Tags.Fish && x.Count != 0).ToList();
+                List<DatabaseInventoryItem> items = user.Inventory.Where(x => x.Item.Tag == ItemTag.Fish && x.Count != 0).ToList();
                 if (items.Count == 0)
                 {
                     await ctx.CreateResponseAsync("You have no fish to sell!", true);
@@ -42,7 +38,7 @@ namespace SAIYA.Commands
                 int totalCredits = 0;
                 foreach (DatabaseInventoryItem item in items)
                 {
-                    Fish fish = FishLoader.fish[item.Name];
+                    Fish fish = ItemLoader.fish[item.Name];
                     int amount = await user.RemoveFromInventory(item, item.Count);
                     totalCredits += amount * fish.Price;
                 }

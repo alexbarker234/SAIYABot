@@ -1,34 +1,36 @@
 ﻿using DSharpPlus;
 using DSharpPlus.CommandsNext;
-using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
-using DSharpPlus.Exceptions;
-using DSharpPlus.Interactivity.Extensions;
 using DSharpPlus.SlashCommands;
 using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using SAIYA.Commands;
-using SAIYA.Creatures;
-using SAIYA.Items;
+using SAIYA.Content.Creatures;
+using SAIYA.Content.Items;
 using SAIYA.Models;
 using SAIYA.Systems;
-using System.Net;
 using System.Reflection;
-using System.Runtime.Versioning;
 using System.Text;
 
 namespace SAIYA
 {
     public class Bot
     {
+        // DISCORD
         public static DiscordClient Client { get; private set; }
         public static SlashCommandsExtension SlashCommands { get; private set; }
         public static CommandsNextExtension Commands { get; private set; }
+        // DATABASE
         public static IMongoDatabase Database { get; private set; }
+        public static IMongoCollection<User> Users => Database.GetCollection<User>("SAIYA_USERS");
+        // OTHER
         public static Random rand { get; private set; }
-        public static ConfigJson botConfig { get; private set; }
         public static HttpClient httpClient { get; private set; }
+        // CONFIG
+        public static LogLevel logLevel { get; private set; }
+        public static ConfigJson botConfig { get; private set; }
+
         public Bot() => RunAsync().GetAwaiter().GetResult();
         private async Task RunAsync()
         {
@@ -37,26 +39,37 @@ namespace SAIYA
             rand = new Random();
             httpClient = new HttpClient();
 
+#if DEBUG
+            ulong? guildID = 923496191411507260;
+            logLevel = LogLevel.Debug;
+#else
+            ulong? guildID = null;
+            logLevel = LogLevel.Information;
+#endif
+
             var config = new DiscordConfiguration
             {
                 Token = botConfig.BotToken,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
-                MinimumLogLevel = LogLevel.Debug,
+                MinimumLogLevel = logLevel,
                 Intents = DiscordIntents.All
             };
             Client = new DiscordClient(config);
             Client.Ready += OnClientReady;
             Client.MessageCreated += OnMessageCreated;
             Client.ComponentInteractionCreated += OnComponentInteract;
-            
+
 
             await WeatherManager.UpdateWeather();
 
             // slash commands
 
             SlashCommands = Client.UseSlashCommands();
-            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly());
+
+
+
+            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), guildID);
 
             // regular commands
             var commandsConfig = new CommandsNextConfiguration

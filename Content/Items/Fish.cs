@@ -1,13 +1,10 @@
 ﻿using SAIYA.Models;
 
-namespace SAIYA.Items
+namespace SAIYA.Content.Items
 {
-    public static class FishLoader
-    {
-        public static Dictionary<string, Fish> fish = new();
-    }
     public abstract class Fish : Item
     {
+        public sealed override ItemTag Tag => ItemTag.Fish;
         public virtual double Weight(User user) => 0;
     }
 
