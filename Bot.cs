@@ -28,7 +28,6 @@ namespace SAIYA
         public static Random rand { get; private set; }
         public static HttpClient httpClient { get; private set; }
         // CONFIG
-        public static LogLevel logLevel { get; private set; }
         public static ConfigJson botConfig { get; private set; }
 
         public Bot() => RunAsync().GetAwaiter().GetResult();
@@ -39,20 +38,12 @@ namespace SAIYA
             rand = new Random();
             httpClient = new HttpClient();
 
-#if DEBUG
-            ulong? guildID = 923496191411507260;
-            logLevel = LogLevel.Debug;
-#else
-            ulong? guildID = null;
-            logLevel = LogLevel.Information;
-#endif
-
             var config = new DiscordConfiguration
             {
                 Token = botConfig.BotToken,
                 TokenType = TokenType.Bot,
                 AutoReconnect = true,
-                MinimumLogLevel = logLevel,
+                MinimumLogLevel = LogLevel.Information,
                 Intents = DiscordIntents.All
             };
             Client = new DiscordClient(config);
@@ -60,16 +51,10 @@ namespace SAIYA
             Client.MessageCreated += OnMessageCreated;
             Client.ComponentInteractionCreated += OnComponentInteract;
 
-
-            await WeatherManager.UpdateWeather();
-
             // slash commands
 
             SlashCommands = Client.UseSlashCommands();
-
-
-
-            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), guildID);
+            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), botConfig.SlashCommandGuild == null ? null: ulong.Parse(botConfig.SlashCommandGuild));
 
             // regular commands
             var commandsConfig = new CommandsNextConfiguration
@@ -82,17 +67,15 @@ namespace SAIYA
 
             Commands = Client.UseCommandsNext(commandsConfig);
             Commands.RegisterCommands(Assembly.GetExecutingAssembly());
-            //Commands.RegisterCommands<AdminCommands>();
-
-
 
             // database
             var mongoClient = new MongoClient(botConfig.MongoToken);
-            Database = mongoClient.GetDatabase("SAIYA");
+            Database = mongoClient.GetDatabase(botConfig.DatabaseName);
 
             CreatureLoader.Load();
             ItemLoader.Load();
             BackgroundTimerFunctions timer = new BackgroundTimerFunctions();
+            await WeatherManager.UpdateWeather();
 
             await Client.ConnectAsync();
             await Task.Delay(-1);

@@ -15,5 +15,9 @@ namespace SAIYA
         public string MongoToken { get; private set; }
         [JsonProperty("weatherToken")]
         public string WeatherToken { get; private set; }
+        [JsonProperty("databaseName")]
+        public string DatabaseName { get; private set; }
+        [JsonProperty("slashCommandGuild")]
+        public string SlashCommandGuild { get; private set; }
     }
 }
