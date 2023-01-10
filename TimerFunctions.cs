@@ -32,6 +32,7 @@ namespace SAIYA
                 var userList = await Bot.Users.Find(p => true).ToListAsync();
                 foreach (User user in userList)
                 {
+                    user.InitialiseStats();
                     await EggHatching(user);
                     if (secondsElapsed % 60 == 0) await ManageGarden(user);
                 }
@@ -62,9 +63,7 @@ namespace SAIYA
                 if (plantDB.Empty) continue;
                 if (plantDB.Plant == null) continue;
 
-                UserStats stats = user.CalculateStats();
-
-                int waterRate = (int)(plantDB.Plant.WaterRate.TotalSeconds * (1 + (1 - stats.gardenWaterRetention)));
+                int waterRate = (int)(plantDB.Plant.WaterRate.TotalSeconds * user.UserStats.GardenWaterRateMultiplier);
                 if (DateTime.UtcNow.Subtract(plantDB.LastWatered).TotalSeconds > waterRate)
                 {
                     int timeUnwatered = plantDB.GrowthDelay + (int)(DateTime.UtcNow - plantDB.LastUnwateredUpdate).TotalSeconds;
@@ -78,12 +77,12 @@ namespace SAIYA
                 }
             }
         }
-        private List<DiscordActivity> activities = new()
+        private static List<DiscordActivity> activities = new()
         {
             new DiscordActivity("humans be small", ActivityType.Watching),
             new DiscordActivity("with your mind", ActivityType.Playing),
             new DiscordActivity("you", ActivityType.ListeningTo),
         };
-        public async Task SetActivity() => await Bot.Client.UpdateStatusAsync(Bot.rand.Next(activities));
+        public static async Task SetActivity() => await Bot.Client.UpdateStatusAsync(Bot.rand.Next(activities));
     }
 }

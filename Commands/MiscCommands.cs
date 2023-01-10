@@ -171,12 +171,12 @@ namespace SAIYA.Commands
                 $"**Times Fished:**\n" +
                 $"**Total Messages:**";
             string values = 
-                $"{Bot.CreditEmoji}{user.Statistics.LifetimeCredits}\n" +
-                $"{user.Statistics.ItemsSold}\n" +
-                $"{user.Statistics.ItemsBought}\n" +
-                $"{user.Statistics.FishCaught}\n" +
-                $"{user.Statistics.TimesFished}\n" +
-                $"{user.Statistics.Messages}";
+                $"{Bot.CreditEmoji}{user.DiscordStatistics.LifetimeCredits}\n" +
+                $"{user.DiscordStatistics.ItemsSold}\n" +
+                $"{user.DiscordStatistics.ItemsBought}\n" +
+                $"{user.DiscordStatistics.FishCaught}\n" +
+                $"{user.DiscordStatistics.TimesFished}\n" +
+                $"{user.DiscordStatistics.Messages}";
             DiscordEmbedBuilder embed = new DiscordEmbedBuilder();
             embed.WithTitle($"{ctx.Member.DisplayName}'s Bank Account");
             embed.AddField("Statistic", titles, true);

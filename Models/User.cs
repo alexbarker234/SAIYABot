@@ -46,7 +46,7 @@ namespace SAIYA.Models
         public Garden Garden { get; set; }
 
         [BsonElement("statistics")]
-        public UserDiscordStats Statistics { get; set; }
+        public UserDiscordStats DiscordStatistics { get; set; }
 
         // CALCULATED FIELDS
         [BsonIgnore]
@@ -59,6 +59,10 @@ namespace SAIYA.Models
         public int TotalCreatures => Creatures.Sum(c => c.Count);
         [BsonIgnore]
         public int BestiaryCompletion => Creatures.Where(c => c.Count != 0).ToList().Count;
+        [BsonIgnore]
+        public UserStats UserStats { get; private set; }
+        [BsonIgnore]
+        public int PlotsToShow => Math.Max(Garden.Plants.Count(x => !x.Empty), UserStats.gardenPlots);
 
         [BsonExtraElements]
         public BsonDocument CatchAll { get; set; }
@@ -77,20 +81,19 @@ namespace SAIYA.Models
             if (Creatures == default) { Creatures = new DatabaseCreature[0]; hasChanged = true; }
             if (Inventory == default) { Inventory = new DatabaseInventoryItem[0]; hasChanged = true; }
             if (Eggs == default) { Eggs = new DatabaseEgg[0]; hasChanged = true; }
-            if (Statistics == default) { Statistics = new UserDiscordStats(); hasChanged = true; }
+            if (DiscordStatistics == default) { DiscordStatistics = new UserDiscordStats(); hasChanged = true; }
             if (Garden == default) { Garden = new Garden(); hasChanged = true; }
             if (Garden.Plants == default || Garden.Plants.Length != 8) { Garden.Plants = Enumerable.Repeat(DatabasePlant.None, 8).ToArray(); hasChanged = true; }
             return hasChanged;
         }
-        public UserStats CalculateStats()
+
+        public void InitialiseStats()
         {
-            UserStats stats = new UserStats();
+            UserStats = new UserStats();
 
             Random random = new Random(DateTime.Now.DayOfYear + (int)UserID);
-            stats.luck = random.NextDouble(0.9, 1.1);
-            stats.eggChance += 0.05 * stats.luck;
-
-            return stats;
+            UserStats.luck = random.NextDouble(0.9, 1.1);
+            UserStats.eggChance += 0.05 * UserStats.luck;
         }
         public static async Task<User> GetOrCreateUser(ulong userID, ulong guildID)
         {
@@ -112,6 +115,7 @@ namespace SAIYA.Models
                 if (user.Initialise())
                     await user.Save();
             }
+            user.InitialiseStats();
             return user;
         }
         public async Task Save() => await Bot.Users.ReplaceOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, this);
@@ -139,7 +143,7 @@ namespace SAIYA.Models
             var update = Builders<User>.Update.Push(x => x.Inventory, item);
             if (existingIndex != -1)
                 update = Builders<User>.Update.Inc(x => x.Inventory[existingIndex].Count, item.Count);
-            if (isBuy) update = update.Inc(x => x.Statistics.ItemsSold, item.Count);
+            if (isBuy) update = update.Inc(x => x.DiscordStatistics.ItemsSold, item.Count);
 
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
         }
@@ -151,7 +155,7 @@ namespace SAIYA.Models
                 updateDefinition = updateDefinition.Inc(x => x.Inventory[existingIndex].Count, item.Count);
             else
                 updateDefinition = updateDefinition.Push(x => x.Inventory, item);
-            if (isBuy) updateDefinition = updateDefinition.Inc(x => x.Statistics.ItemsSold, item.Count);
+            if (isBuy) updateDefinition = updateDefinition.Inc(x => x.DiscordStatistics.ItemsSold, item.Count);
         }
         /// <summary> Returns the amount successfully removed </summary>
         public async Task<int> RemoveFromInventory(DatabaseInventoryItem item, int toRemove, bool isSale = false)
@@ -162,13 +166,13 @@ namespace SAIYA.Models
             toRemove = Math.Min(toRemove, Inventory[index].Count);
 
             var update = Builders<User>.Update.Inc(x => x.Inventory[index].Count, -toRemove);
-            if (isSale) update = update.Inc(x => x.Statistics.ItemsSold, toRemove);
+            if (isSale) update = update.Inc(x => x.DiscordStatistics.ItemsSold, toRemove);
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
             return toRemove;
         }
         public async Task AddCredits(int amount)
         {
-            var update = Builders<User>.Update.Inc(x => x.Credits, amount).Inc(x => x.Statistics.LifetimeCredits, amount);
+            var update = Builders<User>.Update.Inc(x => x.Credits, amount).Inc(x => x.DiscordStatistics.LifetimeCredits, amount);
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
         }
         private int HasItem<T>(T[] array, string name) where T : DatabaseItem

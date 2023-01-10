@@ -80,7 +80,7 @@ namespace SAIYA.Commands
             DiscordEmbedBuilder embed = new DiscordEmbedBuilder
             {
                 Title = $"{ctx.Member.DisplayName}'s Bank Account",
-                Description = $"**Current Credits:** {Bot.CreditEmoji}{user.Credits}\n**Lifetime Credits:** {Bot.CreditEmoji}{user.Statistics.LifetimeCredits}"
+                Description = $"**Current Credits:** {Bot.CreditEmoji}{user.Credits}\n**Lifetime Credits:** {Bot.CreditEmoji}{user.DiscordStatistics.LifetimeCredits}"
             };
 
             await ctx.CreateResponseAsync(embed, true);

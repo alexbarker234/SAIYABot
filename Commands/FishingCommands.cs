@@ -63,7 +63,7 @@ namespace SAIYA.Commands
                     User user = await User.GetOrCreateUser(e.User.Id, e.Guild.Id);
 
                     List<Fish> fished = new();
-                    if (Bot.rand.NextDouble() < user.CalculateStats().fishChance)
+                    if (Bot.rand.NextDouble() < user.UserStats.fishChance)
                     {
                         if (TryChooseFish(user, out Fish fish)) fished.Add(fish);
                     }
@@ -80,8 +80,8 @@ namespace SAIYA.Commands
 
                     // UPDATE USER IN DB - user object is now old
                     var update = Builders<User>.Update
-                        .Inc(x => x.Statistics.FishCaught, fished.Count)
-                        .Inc(x => x.Statistics.TimesFished, 1);
+                        .Inc(x => x.DiscordStatistics.FishCaught, fished.Count)
+                        .Inc(x => x.DiscordStatistics.TimesFished, 1);
                     await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
 
                     embed.AddField("You caught...", caughtString);

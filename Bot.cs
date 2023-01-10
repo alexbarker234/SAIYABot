@@ -88,7 +88,7 @@ namespace SAIYA
 
             await Client.ConnectAsync();
             await Task.Delay(-1);
-            await timer.SetActivity();
+            await TimerManager.SetActivity();
         }
         private class RemoveDuplicateCommands : ApplicationCommandModule { }
         private ConfigJson LoadConfig()
@@ -112,7 +112,7 @@ namespace SAIYA
             ulong userID = e.Message.Author.Id, guildID = e.Guild.Id;
 
             User user = await User.GetOrCreateUser(userID, guildID);
-            user.Statistics.Messages++;
+            user.DiscordStatistics.Messages++;
             await ManageUserExperience.UserXP(e, user);
             await user.Save();
 

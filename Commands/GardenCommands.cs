@@ -32,13 +32,12 @@ namespace SAIYA.Commands
                     Bitmap b = new Bitmap(gardenBase);
                     using (Graphics g = Graphics.FromImage(b))
                     {
-
                         if (user.Garden.Plants.Length < 8) Console.WriteLine(ctx.User.Username + " has an incorrect plant array");
                         for (int layer = 0; layer < 2; layer++)
                         {
                             int plotX = 30;
                             int plotY = 58;
-                            for (int i = 0; i < user.Garden.Plants.Length; i++)
+                            for (int i = 0; i < user.PlotsToShow; i++)
                             {
                                 Plant plant = user.Garden.Plants[i].Plant;
                                 if (layer == 0)
@@ -90,7 +89,7 @@ namespace SAIYA.Commands
                       .WithImageUrl("attachment://image.png");
                     if (!showcase)
                     {
-                        for (int i = 0; i < user.Garden.Plants.Length; i++)
+                        for (int i = 0; i < user.PlotsToShow; i++)
                         {
                             DatabasePlant plantDB = user.Garden.Plants[i];
                             Plant plant = user.Garden.Plants[i].Plant;
@@ -143,7 +142,7 @@ namespace SAIYA.Commands
             {
                 plot--;
                 if (!user.Garden.Plants[plot].Empty) return "That plot is full";
-                else if (!IsValidPlot(plot)) return "That plot doesn't exist";
+                else if (!IsValidPlot(plot) || plot > user.UserStats.gardenPlots - 1) return "That plot doesn't exist";
             }
 
             var update = Builders<User>.Update.Set(x => x.Garden.Plants[plot], new DatabasePlant(plantName)).Inc(x => x.Inventory[seedIndex].Count, -1);
@@ -163,14 +162,30 @@ namespace SAIYA.Commands
 
             DatabasePlant toHarvest = user.Garden.Plants[plot];
 
-            if (!IsValidPlot(plot)) return "That plot doesn't exist";
+            if (!IsValidPlot(plot) || plot > user.PlotsToShow - 1) return "That plot doesn't exist";
             else if (toHarvest.Empty) return "That plot is empty";
             else if (!force && toHarvest.GrowthPercent(user) < 1) return "That crop isn't ready to be harvested. Set force to true to destroy this crop";
 
             var update = Builders<User>.Update.Set(x => x.Garden.Plants[plot], DatabasePlant.None);
             user.AddToInventoryDefinition(new DatabaseInventoryItem(toHarvest.Name, toHarvest.Plant.Yield), ref update);
             await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
-            return (toHarvest.GrowthPercent(user) < 1 ? "Destroyed" : "Harvested") + $" {toHarvest.Name} in plot {plot + 1}";
+            return (toHarvest.GrowthPercent(user) < 1 ? "Destroyed" : "Harvested") + $" **{toHarvest.Name}** in plot {plot + 1}";
+        }
+        [SlashCommand("water", "water a crop in your garden")]
+        public async Task Water(InteractionContext ctx, [Option("Plot", "Select plot to harvest")] double plotD) =>
+    await ctx.CreateResponseAsync(await TryWater(ctx, plotD), true);
+        private async Task<string> TryWater(InteractionContext ctx, double plotD = 0)
+        {
+            int plot = (int)plotD - 1;
+            var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
+
+            if (!IsValidPlot(plot) || plot > user.PlotsToShow - 1) return "That plot doesn't exist";
+            else if (user.Garden.Plants[plot].Empty) return "That plot is empty";
+
+            var update = Builders<User>.Update.Set(x => x.Garden.Plants[plot].LastWatered, DateTime.Now);
+            await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
+
+            return $"Watered your **{user.Garden.Plants[plot].Name}** in plot {plot + 1}";
         }
         private bool IsValidPlot(double plot) => plot % 1 == 0 && plot >= 0 && plot <= 7;
     }
