@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using MongoDB.Driver;
 using SAIYA.Content.Items;
 using SAIYA.Content.Plants;
+using SAIYA.Entities;
 using SAIYA.Models;
 using SAIYA.Systems;
 using System.Drawing;
@@ -39,10 +40,10 @@ namespace SAIYA.Commands
                             int plotY = 58;
                             for (int i = 0; i < user.Garden.Plants.Length; i++)
                             {
+                                Plant plant = user.Garden.Plants[i].Plant;
                                 if (layer == 0)
                                 {
                                     g.DrawImage(plot, new Point(plotX, plotY));
-                                    Plant plant = user.Garden.Plants[i].Plant;
                                     if (!user.Garden.Plants[i].Empty && plant != null)
                                     {
                                         Image plantImage = Image.FromFile(plant.PlantTexture);
@@ -54,15 +55,19 @@ namespace SAIYA.Commands
                                 }
                                 else if (layer == 1)
                                 {
-                                    Point barPoint = new Point(plotX + 8, plotY + 38);
-                                    int barWidth = 20;
-                                    g.DrawImage(bars, barPoint);
+                                    if (!user.Garden.Plants[i].Empty && plant != null)
+                                    {
+                                        Point barPoint = new Point(plotX + 8, plotY + 38);
+                                        int barWidth = 20;
+                                        g.DrawImage(bars, barPoint);
 
-                                    int waterBarSize = barWidth;
-                                    g.FillRectangle(blueBrush, new Rectangle(barPoint.X + 2, barPoint.Y + 2, waterBarSize, 4));
-                                    
-                                    int growthBarSize = barWidth;
-                                    g.FillRectangle(greenBrush, new Rectangle(barPoint.X + 2, barPoint.Y + 8, waterBarSize, 4));
+                                        int waterBarSize = (int)(barWidth * user.Garden.Plants[i].WaterPercent(user));
+                                        g.FillRectangle(blueBrush, new Rectangle(barPoint.X + 2, barPoint.Y + 2, waterBarSize, 4));
+
+                                        double p = user.Garden.Plants[i].GrowthPercent(user).Value;
+                                        int growthBarSize = (int)(barWidth * user.Garden.Plants[i].GrowthPercent(user));
+                                        g.FillRectangle(greenBrush, new Rectangle(barPoint.X + 2, barPoint.Y + 8, growthBarSize, 4));
+                                    }
                                 }
                                 plotX += 36;
                                 plotY += 18;
@@ -96,71 +101,62 @@ namespace SAIYA.Commands
             }
         }
         [SlashCommand("plant", "plant a crop from your inventory")]
-        public async Task Plant(InteractionContext ctx,
-            [ChoiceProvider(typeof(PlantOption))] [Option("Plant", "Select the crop to plant")] string plantName, 
-            [Option("Plot", "Select plot to plant in")] double plotD = 0)
+        public async Task Plant(InteractionContext ctx, [Autocomplete(typeof(PlantAutocomplete))][Option("Seed", "Select the seed to plant")] string seedName, [Option("Plot", "Select plot to plant in")] double plotD = 0) =>
+            await ctx.CreateResponseAsync(await TryPlant(ctx, seedName, plotD), true);
+
+        /// <returns>An error or success message</returns>
+        private async Task<string> TryPlant(InteractionContext ctx, string seedName, double plotD = 0)
         {
-            var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
-            if (plotD % 1 != 0)
-            {
-                await ctx.CreateResponseAsync(new DiscordEmbedBuilder { Description = "That plot doesn't exist" });
-                return;
-            }
             int plot = (int)plotD;
+            var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
 
-            if (plot == 0)
+            string plantName = seedName.Replace(" Seeds", "");
+
+            // shouldnt occur
+            if (!ItemLoader.plants.Keys.Contains(plantName)) return "That plant doesn't exist";
+            int seedIndex = user.Inventory.ToList().FindIndex(x => x.Name == seedName && x.Count > 0);
+            if (seedIndex == -1) return $"You don't have any {plantName} seeds";
+
+            // plot value not entered - find plot to plant
+            if (plotD == 0)
             {
-                plot = user.Garden.Plants.ToList().FindIndex(x => x.Empty);
-
-                if (plot == -1)
-                {
-                    await ctx.CreateResponseAsync(new DiscordEmbedBuilder { Description = "Your garden is full!" });
-                    return;
-                }
+                plotD = user.Garden.Plants.ToList().FindIndex(x => x.Empty);
+                if (plotD == -1) return "Your garden is full!";
             }
+            // plot value entered
             else
             {
-                if (plot < 1 || plot > 8)
-                {
-                    await ctx.CreateResponseAsync(new DiscordEmbedBuilder { Description = "That plot doesn't exist" });
-                    return;
-                }
                 plot--;
-
-                if (!user.Garden.Plants[plot].Empty)
-                {
-                    await ctx.CreateResponseAsync(new DiscordEmbedBuilder { Description = "That plot is full" });
-                    return;
-                }
+                if (!user.Garden.Plants[plot].Empty) return "That plot is full";
+                else if (!IsValidPlot(plot)) return "That plot doesn't exist";
             }
 
-            if (!ItemLoader.plants.Keys.Contains(plantName))
-            {
-                await ctx.CreateResponseAsync(new DiscordEmbedBuilder { Description = "That plant doesn't exist" });
-                return;
-            }
-            var update = Builders<User>.Update.Set(x => x.Garden.Plants[(int)plot], new DatabasePlant(plantName));
+            var update = Builders<User>.Update.Set(x => x.Garden.Plants[plot], new DatabasePlant(plantName)).Inc(x => x.Inventory[seedIndex].Count, -1);
             await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
 
-            await ctx.CreateResponseAsync(new DiscordEmbedBuilder { Description = "Planted" });
+            return $"Planted {plantName} in plot {plot + 1}";
         }
+        [SlashCommand("harvest", "harvest a crop from your garden")]
+        public async Task Harvest(InteractionContext ctx, [Option("Plot", "Select plot to harvest")] double plotD, [Option("Force", "Whether or not to pull up ungrown crops")] bool force = false) => 
+            await ctx.CreateResponseAsync(await TryHarvest(ctx, plotD, force), true);
 
-        // this will break if we reach 22+ (?) plants so use PlantProvider
-        public class PlantOption : IChoiceProvider
+
+        private async Task<string> TryHarvest(InteractionContext ctx, double plotD = 0, bool force = false)
         {
-            #pragma warning disable CS1998
-            public async Task<IEnumerable<DiscordApplicationCommandOptionChoice>> Provider()
-                => ItemLoader.plants.Values.Select(x => new DiscordApplicationCommandOptionChoice(x.Name, x.Name));
-            #pragma warning restore CS1998
+            int plot = (int)plotD - 1;
+            var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
+
+            DatabasePlant toHarvest = user.Garden.Plants[plot];
+
+            if (!IsValidPlot(plot)) return "That plot doesn't exist";
+            else if (toHarvest.Empty) return "That plot is empty";
+            else if (!force && toHarvest.GrowthPercent(user) < 1)  return "That crop isn't ready to be harvested. Set force to true to destroy this crop";
+
+            var update = Builders<User>.Update.Set(x => x.Garden.Plants[plot], DatabasePlant.None);
+            user.AddToInventoryDefinition(new DatabaseInventoryItem(toHarvest.Name, toHarvest.Plant.Yield), ref update);
+            await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
+            return (toHarvest.GrowthPercent(user) < 1 ? "Destroyed" : "Harvested") + $" {toHarvest.Name} in plot {plot + 1}";
         }
-        /*
-        private class PlantProvider : IAutocompleteProvider
-        {
-            #pragma warning disable CS1998
-            public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx) 
-                => ItemLoader.plants.Values.Select(x => new DiscordAutoCompleteChoice(x.Name, x.Name));
-            #pragma warning restore CS1998
-        }
-        */
+        private bool IsValidPlot(double plot) => plot % 1 == 0 && plot >= 0 && plot <= 7;
     }
 }

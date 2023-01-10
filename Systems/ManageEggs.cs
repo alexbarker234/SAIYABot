@@ -26,7 +26,7 @@ namespace SAIYA.Systems
 
                 Bot.Users.UpdateOne(x => x.UserID == user.UserID && x.GuildID == user.GuildID, Builders<User>.Update.Set(x => x.LastEggRoll, DateTime.Now));
 
-                double eggChance = 0.1;
+                double eggChance = user.CalculateStats().eggChance;
 
                 if (Bot.rand.NextDouble() < eggChance)
                 {

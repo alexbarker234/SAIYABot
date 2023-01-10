@@ -4,6 +4,7 @@ using MongoDB.Driver;
 using SAIYA.Content.Creatures;
 using SAIYA.Content.Items;
 using SAIYA.Content.Plants;
+using SAIYA.Systems;
 
 namespace SAIYA.Models
 {
@@ -45,7 +46,7 @@ namespace SAIYA.Models
         public Garden Garden { get; set; }
 
         [BsonElement("statistics")]
-        public UserStats Statistics { get; set; }
+        public UserDiscordStats Statistics { get; set; }
 
         // CALCULATED FIELDS
         [BsonIgnore]
@@ -76,10 +77,20 @@ namespace SAIYA.Models
             if (Creatures == default) { Creatures = new DatabaseCreature[0]; hasChanged = true; }
             if (Inventory == default) { Inventory = new DatabaseInventoryItem[0]; hasChanged = true; }
             if (Eggs == default) { Eggs = new DatabaseEgg[0]; hasChanged = true; }
-            if (Statistics == default) { Statistics = new UserStats(); hasChanged = true; }
+            if (Statistics == default) { Statistics = new UserDiscordStats(); hasChanged = true; }
             if (Garden == default) { Garden = new Garden(); hasChanged = true; }
             if (Garden.Plants == default || Garden.Plants.Length != 8) { Garden.Plants = Enumerable.Repeat(DatabasePlant.None, 8).ToArray(); hasChanged = true; }
             return hasChanged;
+        }
+        public UserStats CalculateStats()
+        {
+            UserStats stats = new UserStats();
+
+            Random random = new Random(DateTime.Now.DayOfYear + (int)UserID);
+            stats.luck = random.NextDouble(0.9, 1.1);
+            stats.eggChance += 0.05 * stats.luck;
+
+            return stats;
         }
         public static async Task<User> GetOrCreateUser(ulong userID, ulong guildID)
         {
@@ -103,12 +114,6 @@ namespace SAIYA.Models
             }
             return user;
         }
-        public async Task Update(string field, object newValue)
-        {
-            var update = Builders<User>.Update.Set(field, newValue);
-            await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
-        }
-
         public async Task Save() => await Bot.Users.ReplaceOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, this);
         public async Task AddEgg(Creature creature)
         {
@@ -135,6 +140,14 @@ namespace SAIYA.Models
                 update = Builders<User>.Update.Inc(x => x.Inventory[existingIndex].Count, item.Count);
 
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
+        }
+        public void AddToInventoryDefinition(DatabaseInventoryItem item, ref UpdateDefinition<User> updateDefinition)
+        {
+            int existingIndex = HasItem(Inventory, item.Name);
+            if (existingIndex != -1)
+                updateDefinition = updateDefinition.Inc(x => x.Inventory[existingIndex].Count, item.Count);
+            else
+                updateDefinition = updateDefinition.Push(x => x.Inventory, item);
         }
         /// <summary> Returns the amount successfully removed </summary>
         public async Task<int> RemoveFromInventory(DatabaseInventoryItem item, int toRemove)
@@ -165,6 +178,24 @@ namespace SAIYA.Models
     }
     public class UserStats
     {
+        public double eggChance = 0.1;
+        public int eggCooldown = 5;
+        public int eggSlots = 3;
+        public double eggHatchSpeed = 1;
+
+        public double fishChance = 0.4;
+        public double chestChance = 0.025;
+        public double artifactChance = 0.002;
+
+        public int gardenPlots = 2;
+        public double gardenGrowthRate = 1;
+        public double gardenWaterRetention = 1;
+        public double GardenWaterRateMultiplier => 1 + (1 - gardenWaterRetention);
+
+        public double luck = 1;
+    }
+    public class UserDiscordStats
+    {
         [BsonElement("messages")]
         public int Messages { get; set; }
 
@@ -188,13 +219,13 @@ namespace SAIYA.Models
         [BsonElement("name")]
         public string Name { get; set; }
         [BsonElement("plantedTime")]
-        public DateTime? PlantedTime { get; set; }
+        public DateTime PlantedTime { get; set; }
         [BsonElement("lastWatered")]
-        public DateTime? LastWatered { get; set; }
-        [BsonElement("timeUnwatered")]
-        public int? TimeUnwatered { get; set; }
-        [BsonElement("timeUnwateredUpdate")]
-        public DateTime? TimeUnwateredUpdate { get; set; }
+        public DateTime LastWatered { get; set; }
+        [BsonElement("growthDelay")]
+        public int GrowthDelay { get; set; }
+        [BsonElement("lastUnwateredUpdate")]
+        public DateTime LastUnwateredUpdate { get; set; }
 
 
         [BsonIgnore]
@@ -203,6 +234,9 @@ namespace SAIYA.Models
         [BsonIgnore]
         public Plant Plant => ItemLoader.plants.GetValueOrDefault(Name);
 
+        public double? WaterPercent(User user) => Plant == null ? null : 1 - Math.Clamp((DateTime.UtcNow - LastWatered).TotalSeconds / (Plant.WaterRate.TotalSeconds * user.CalculateStats().GardenWaterRateMultiplier),0,1);
+        public double? GrowthPercent(User user) => Plant == null ? null : Math.Clamp((DateTime.UtcNow - PlantedTime).TotalSeconds / (Plant.GrowTime.TotalSeconds * user.CalculateStats().gardenGrowthRate),0,1);
+
         [BsonExtraElements]
         public BsonDocument CatchAll { get; set; }
         public DatabasePlant(string name)
@@ -210,10 +244,10 @@ namespace SAIYA.Models
             Name = name;
             PlantedTime = DateTime.Now;
             LastWatered = DateTime.Now;
-            TimeUnwateredUpdate = DateTime.Now;
-            TimeUnwatered = 0;
+            LastUnwateredUpdate = DateTime.Now;
+            GrowthDelay = 0;
         }
-        public static DatabasePlant None => new DatabasePlant("None") { PlantedTime = null, LastWatered = null, TimeUnwatered = null, TimeUnwateredUpdate = null };
+        public static DatabasePlant None => new DatabasePlant("None") { PlantedTime = DateTime.UnixEpoch, LastWatered = DateTime.UnixEpoch, GrowthDelay = 0, LastUnwateredUpdate = DateTime.UnixEpoch };
     }
     public class DatabaseCreature : DatabaseItem
     {

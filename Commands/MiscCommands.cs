@@ -5,6 +5,7 @@ using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
 using SAIYA.Content.Creatures;
 using SAIYA.Content.Items;
+using SAIYA.Entities;
 using SAIYA.Models;
 using SAIYA.Systems;
 
@@ -21,7 +22,7 @@ namespace SAIYA.Commands
         #region leaderboards
         [SlashCommand("leaderboards", "check the level leaderboards")]
         public async Task Leaderboards(InteractionContext ctx,
-            [ChoiceProvider(typeof(leaderboardOption))]
+            [ChoiceProvider(typeof(LeaderboardOption))]
             [Option("Category", "Which leaderboard to view")] double category)
         {
             string title = "";
@@ -85,19 +86,6 @@ namespace SAIYA.Commands
             CreaturesTotal,
             CreatureCompletion,
         }
-        public class leaderboardOption : IChoiceProvider
-        {
-            #pragma warning disable CS1998
-            public async Task<IEnumerable<DiscordApplicationCommandOptionChoice>> Provider()
-            {
-                return new DiscordApplicationCommandOptionChoice[] {
-                    new DiscordApplicationCommandOptionChoice("Levels", (int)LeaderboardCategory.Levels),
-                    new DiscordApplicationCommandOptionChoice("Total Creatures", (int)LeaderboardCategory.CreaturesTotal),
-                    new DiscordApplicationCommandOptionChoice("Bestiary Completion", (int)LeaderboardCategory.CreatureCompletion),
-                };
-            }
-            #pragma warning restore CS1998
-        }
 
         #endregion
         [SlashCommand("level", "check your level")]
@@ -133,7 +121,9 @@ namespace SAIYA.Commands
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
 
-            List<DatabaseInventoryItem> fishList = user.Inventory.Where(x => x.Item.Tag == ItemTag.Fish && x.Count != 0).ToList();
+            List<DatabaseInventoryItem> fishList = user.Inventory.Where(x => x.Item?.Tag == ItemTag.Fish && x.Count != 0).ToList();
+            List<DatabaseInventoryItem> seedList = user.Inventory.Where(x => x.Item?.Tag == ItemTag.Seed && x.Count != 0).ToList();
+            List<DatabaseInventoryItem> plantList = user.Inventory.Where(x => x.Item?.Tag == ItemTag.Plant && x.Count != 0).ToList();
 
             var creditEmoji = Utilities.GetEmojiFromWarehouse(ctx.Client, "flarin", "💰");
 

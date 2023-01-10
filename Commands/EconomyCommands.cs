@@ -1,7 +1,7 @@
-﻿using DSharpPlus.Entities;
-using DSharpPlus.SlashCommands;
+﻿using DSharpPlus.SlashCommands;
 using MongoDB.Driver;
 using SAIYA.Content.Items;
+using SAIYA.Entities;
 using SAIYA.Models;
 
 namespace SAIYA.Commands
@@ -52,16 +52,6 @@ namespace SAIYA.Commands
         {
             Fish
         }
-        public class SellOption : IChoiceProvider
-        {
-            #pragma warning disable CS1998
-            public async Task<IEnumerable<DiscordApplicationCommandOptionChoice>> Provider()
-            {
-                return new DiscordApplicationCommandOptionChoice[] {
-                    new DiscordApplicationCommandOptionChoice("Fish", (int)SellCategory.Fish),
-                };
-            }
-            #pragma warning restore CS1998
-        }
+
     }
 }

@@ -16,5 +16,6 @@ namespace SAIYA.Systems
 
         // RANDOM
         public static T Next<T>(this Random rand, List<T> list) => list[rand.Next(list.Count)];
+        public static double NextDouble(this Random rand, double min, double max) => rand.NextDouble() * (max - min) + min;
     }
 }

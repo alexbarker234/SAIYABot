@@ -74,7 +74,7 @@ namespace SAIYA
 
             CreatureLoader.Load();
             ItemLoader.Load();
-            BackgroundTimerFunctions timer = new BackgroundTimerFunctions();
+            TimerManager timer = new TimerManager();
             await WeatherManager.UpdateWeather();
 
             await Client.ConnectAsync();
