@@ -58,7 +58,12 @@ namespace SAIYA
             // slash commands
 
             SlashCommands = Client.UseSlashCommands();
-            SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), botConfig.SlashCommandGuild == null ? null: ulong.Parse(botConfig.SlashCommandGuild));
+            if (botConfig.SlashCommandGuild != null)
+            {
+                SlashCommands.RegisterCommands<RemoveDuplicateCommands>(); // remove duplicate thingos
+                SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), ulong.Parse(botConfig.SlashCommandGuild));
+            }
+            else SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), null);
 
             // regular commands
             var commandsConfig = new CommandsNextConfiguration
@@ -85,7 +90,7 @@ namespace SAIYA
             await Task.Delay(-1);
             await timer.SetActivity();
         }
-
+        private class RemoveDuplicateCommands : ApplicationCommandModule { }
         private ConfigJson LoadConfig()
         {
             var fileContents = string.Empty;

@@ -46,11 +46,9 @@ namespace SAIYA.Commands
 
             DateTime interactionCreated = e.Interaction.CreationTimestamp.UtcDateTime;
 
-            int milleCD = (int)interactionCreated.Subtract(fishCooldowns[e.User.Id]).TotalMilliseconds;
-            if (fishCooldowns.ContainsKey(e.User.Id) && milleCD < 3000) onCD = true;
+            int milleCD = 3000;
+            if (fishCooldowns.ContainsKey(e.User.Id) && (int)interactionCreated.Subtract(fishCooldowns[e.User.Id]).TotalMilliseconds < milleCD) onCD = true;
             else fishCooldowns[e.User.Id] = interactionCreated;
-
-            var fishButtonOn = new DiscordButtonComponent(ButtonStyle.Primary, "fish", "Fish");
 
             try
             {
@@ -87,13 +85,18 @@ namespace SAIYA.Commands
                     await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
 
                     embed.AddField("You caught...", caughtString);
+                    embed.WithColor(new DiscordColor("#1b46e0"));
                 }
-                else embed.AddField("Cooldown", "You are on cooldown!");
-                embed.AddField("Can fish again in: ", $"<t:{fishCooldowns[e.User.Id].AddMilliseconds(3000).ToElapsedSeconds()}:R>");
+                else
+                {
+                    embed.AddField("Cooldown", "You are on cooldown!");
+                    embed.WithColor(new DiscordColor("#bf0f24"));
+                }
+                embed.AddField("Can fish again in: ", $"<t:{fishCooldowns[e.User.Id].AddMilliseconds(milleCD).ToElapsedSeconds()}:R>");
 
                 DiscordWebhookBuilder web = new DiscordWebhookBuilder();
                 web.AddEmbed(embed);
-                web.AddComponents(fishButtonOn);
+                web.AddComponents(e.Message.Components);
 
                 await e.Interaction.EditOriginalResponseAsync(web, Enumerable.Empty<DiscordAttachment>());
             }

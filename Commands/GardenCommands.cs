@@ -53,7 +53,7 @@ namespace SAIYA.Commands
                                     //g.DrawString(user.Garden.Plants[i].Name, new Font("Arial", 8), new SolidBrush(Color.Black), new PointF(plotX + 20, plotY + 10));
 
                                 }
-                                else if (layer == 1)
+                                else if (layer == 1 && !showcase)
                                 {
                                     if (!user.Garden.Plants[i].Empty && plant != null)
                                     {
@@ -88,7 +88,20 @@ namespace SAIYA.Commands
                       .WithColor(new DiscordColor("#8ced8c"))
                       .WithTitle($"{ctx.Member.DisplayName}'s Garden")
                       .WithImageUrl("attachment://image.png");
+                    if (!showcase)
+                    {
+                        for (int i = 0; i < user.Garden.Plants.Length; i++)
+                        {
+                            DatabasePlant plantDB = user.Garden.Plants[i];
+                            Plant plant = user.Garden.Plants[i].Plant;
+                            if (plantDB.Empty) continue;
 
+                            string harvest = $"🌿Harvest {GetTimeString(DateTime.UtcNow.AddSeconds(plantDB.SecondsUntilGrown(user).Value))}";
+                            string water = $"💧Water {GetTimeString(DateTime.UtcNow.AddSeconds(plantDB.SecondsUntilWater(user).Value))}";
+
+                            embed.AddField($"Plot {i + 1}", $"{harvest}\n{water}", true);
+                        }
+                    }
                     DiscordInteractionResponseBuilder builder = new DiscordInteractionResponseBuilder();
                     builder.AddFile($"image.png", ms);
                     builder.AddEmbed(embed).AsEphemeral(!showcase);
@@ -100,6 +113,8 @@ namespace SAIYA.Commands
                 Console.WriteLine(e);
             }
         }
+        private string GetTimeString(DateTime date) => date < DateTime.UtcNow ? "now" : $"<t:{date.ToElapsedSeconds()}:R>";
+
         [SlashCommand("plant", "plant a crop from your inventory")]
         public async Task Plant(InteractionContext ctx, [Autocomplete(typeof(PlantAutocomplete))][Option("Seed", "Select the seed to plant")] string seedName, [Option("Plot", "Select plot to plant in")] double plotD = 0) =>
             await ctx.CreateResponseAsync(await TryPlant(ctx, seedName, plotD), true);
@@ -137,7 +152,7 @@ namespace SAIYA.Commands
             return $"Planted {plantName} in plot {plot + 1}";
         }
         [SlashCommand("harvest", "harvest a crop from your garden")]
-        public async Task Harvest(InteractionContext ctx, [Option("Plot", "Select plot to harvest")] double plotD, [Option("Force", "Whether or not to pull up ungrown crops")] bool force = false) => 
+        public async Task Harvest(InteractionContext ctx, [Option("Plot", "Select plot to harvest")] double plotD, [Option("Force", "Whether or not to pull up ungrown crops")] bool force = false) =>
             await ctx.CreateResponseAsync(await TryHarvest(ctx, plotD, force), true);
 
 
@@ -150,7 +165,7 @@ namespace SAIYA.Commands
 
             if (!IsValidPlot(plot)) return "That plot doesn't exist";
             else if (toHarvest.Empty) return "That plot is empty";
-            else if (!force && toHarvest.GrowthPercent(user) < 1)  return "That crop isn't ready to be harvested. Set force to true to destroy this crop";
+            else if (!force && toHarvest.GrowthPercent(user) < 1) return "That crop isn't ready to be harvested. Set force to true to destroy this crop";
 
             var update = Builders<User>.Update.Set(x => x.Garden.Plants[plot], DatabasePlant.None);
             user.AddToInventoryDefinition(new DatabaseInventoryItem(toHarvest.Name, toHarvest.Plant.Yield), ref update);

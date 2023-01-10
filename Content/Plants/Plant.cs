@@ -1,4 +1,5 @@
 ﻿using SAIYA.Content.Items;
+using SAIYA.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,6 +14,8 @@ namespace SAIYA.Content.Plants
         public virtual string PlantedEffect { get; }
         public abstract TimeSpan GrowTime { get; }
         public abstract TimeSpan WaterRate { get; }
+        public TimeSpan BoostedGrowTime(User user) => GrowTime * user.CalculateStats().GardenGrowthRateMultiplier;
+        public TimeSpan BoostedWaterRate(User user) => WaterRate * user.CalculateStats().GardenWaterRateMultiplier;
         public abstract int Yield { get; }
         public sealed override ItemTag Tag => ItemTag.Plant;
         public sealed override bool Buyable => false;

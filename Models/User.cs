@@ -188,7 +188,7 @@ namespace SAIYA.Models
         public int eggSlots = 3;
         public double eggHatchSpeed = 1;
 
-        public double fishChance = 0.4;
+        public double fishChance = 0.3;
         public double chestChance = 0.025;
         public double artifactChance = 0.002;
 
@@ -196,6 +196,7 @@ namespace SAIYA.Models
         public double gardenGrowthRate = 1;
         public double gardenWaterRetention = 1;
         public double GardenWaterRateMultiplier => 1 + (1 - gardenWaterRetention);
+        public double GardenGrowthRateMultiplier => 1 + (1 - gardenGrowthRate);
 
         public double luck = 1;
     }
@@ -247,8 +248,16 @@ namespace SAIYA.Models
         [BsonIgnore]
         public Plant Plant => ItemLoader.plants.GetValueOrDefault(Name);
 
-        public double? WaterPercent(User user) => Plant == null ? null : 1 - Math.Clamp((DateTime.UtcNow - LastWatered).TotalSeconds / (Plant.WaterRate.TotalSeconds * user.CalculateStats().GardenWaterRateMultiplier), 0, 1);
-        public double? GrowthPercent(User user) => Plant == null ? null : Math.Clamp((DateTime.UtcNow - PlantedTime).TotalSeconds / (Plant.GrowTime.TotalSeconds * user.CalculateStats().gardenGrowthRate), 0, 1);
+        [BsonIgnore]
+        public int SinceWatered => (int)(DateTime.UtcNow - LastWatered).TotalSeconds;
+        [BsonIgnore]
+        public int SincePlanted => (int)(DateTime.UtcNow - PlantedTime).TotalSeconds;
+
+        public double? WaterPercent(User user) => Plant == null ? null : 1 - Math.Clamp(SinceWatered / Plant.BoostedWaterRate(user).TotalSeconds, 0, 1);
+        public double? GrowthPercent(User user) => Plant == null ? null : Math.Clamp((SincePlanted - GrowthDelay) / Plant.BoostedGrowTime(user).TotalSeconds, 0, 1);
+        public int? SecondsUntilGrown(User user) => Plant == null ? null : (int)(Plant.BoostedGrowTime(user).TotalSeconds + GrowthDelay - SincePlanted);
+        public int? SecondsUntilWater(User user) => Plant == null ? null : (int)(Plant.BoostedWaterRate(user).TotalSeconds - SinceWatered);
+
 
         [BsonExtraElements]
         public BsonDocument CatchAll { get; set; }
