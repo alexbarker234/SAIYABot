@@ -83,7 +83,6 @@ namespace SAIYA.Models
             if (Eggs == default) { Eggs = new DatabaseEgg[0]; hasChanged = true; }
             if (DiscordStatistics == default) { DiscordStatistics = new UserDiscordStats(); hasChanged = true; }
             if (Garden == default) { Garden = new Garden(); hasChanged = true; }
-            if (Garden.Plants == default || Garden.Plants.Length != 8) { Garden.Plants = Enumerable.Repeat(DatabasePlant.None, 8).ToArray(); hasChanged = true; }
             return hasChanged;
         }
 
@@ -117,6 +116,11 @@ namespace SAIYA.Models
             }
             user.InitialiseStats();
             return user;
+        }
+        public static async Task<List<User>> GetUserList()
+        {
+            var userList = await Bot.Users.Find(p => true).ToListAsync();
+            return userList;
         }
         public async Task Save() => await Bot.Users.ReplaceOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, this);
         public async Task AddEgg(Creature creature)
@@ -231,6 +235,10 @@ namespace SAIYA.Models
     {
         [BsonElement("plants")]
         public DatabasePlant[] Plants { get; set; }
+        public Garden()
+        {
+            Plants = Enumerable.Repeat(DatabasePlant.None, 8).ToArray();
+        }
     }
     public class DatabasePlant
     {

@@ -25,20 +25,27 @@ namespace SAIYA
         {
             while (await timer.WaitForNextTickAsync())
             {
-                if (secondsElapsed % activityChangeDelay == 0) await SetActivity();
-
-                secondsElapsed += (int)repeatDelay.TotalSeconds;
-
-                var userList = await Bot.Users.Find(p => true).ToListAsync();
-                foreach (User user in userList)
+                try
                 {
-                    user.InitialiseStats();
-                    await EggHatching(user);
-                    if (secondsElapsed % 60 == 0) await ManageGarden(user);
+                    if (secondsElapsed % activityChangeDelay == 0) await SetActivity();
+
+                    secondsElapsed += (int)repeatDelay.TotalSeconds;
+
+                    var userList = await Bot.Users.Find(p => true).ToListAsync();
+                    foreach (User user in userList)
+                    {
+                        user.InitialiseStats();
+                        await EggHatching(user);
+                        if (secondsElapsed % 60 == 0) await ManageGarden(user);
+                    }
+                    if (secondsElapsed % 60 == 0)
+                    {
+                        await WeatherManager.UpdateWeather();
+                    }
                 }
-                if (secondsElapsed % 60 == 0)
+                catch (Exception e)
                 {
-                    await WeatherManager.UpdateWeather();
+                    Console.WriteLine(e);
                 }
             }
         }
@@ -57,6 +64,11 @@ namespace SAIYA
         }
         private async Task ManageGarden(User user)
         {
+            if (user.Garden == null)
+            {
+                Console.WriteLine(user.UserID + "'s garden was null");
+                return;
+            }
             for (int i = 0; i < user.Garden.Plants.Length; i++)
             {
                 DatabasePlant plantDB = user.Garden.Plants[i];

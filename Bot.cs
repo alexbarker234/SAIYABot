@@ -11,6 +11,7 @@ using SAIYA.Content.Creatures;
 using SAIYA.Content.Items;
 using SAIYA.Models;
 using SAIYA.Systems;
+using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
 
@@ -61,7 +62,7 @@ namespace SAIYA
             if (botConfig.SlashCommandGuild != null)
             {
                 SlashCommands.RegisterCommands<RemoveDuplicateCommands>(); // remove duplicate thingos
-                SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), ulong.Parse(botConfig.SlashCommandGuild));
+                SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), botConfig.SlashCommandGuild);
             }
             else SlashCommands.RegisterCommands(Assembly.GetExecutingAssembly(), null);
 
@@ -80,9 +81,13 @@ namespace SAIYA
             // database
             var mongoClient = new MongoClient(botConfig.MongoToken);
             Database = mongoClient.GetDatabase(botConfig.DatabaseName);
+            Console.WriteLine($"Connected to mongoDB {botConfig.DatabaseName}");
+
+            await InitialiseAllUsers();
 
             CreatureLoader.Load();
             ItemLoader.Load();
+            HelpCommands.LoadTabs();
             TimerManager timer = new TimerManager();
             await WeatherManager.UpdateWeather();
 
@@ -119,28 +124,37 @@ namespace SAIYA
             // MUST BE RUN AFTER SAVE
             await ManageEggs.EggRoll(client, e, user);
         }
-        private async Task OnComponentInteract(DiscordClient c, ComponentInteractionCreateEventArgs e)
+        private async Task InitialiseAllUsers()
         {
-            switch (e.Id)
+            await InitialiseUsersField(x => x.Creatures, new DatabaseCreature[0]);
+            await InitialiseUsersField(x => x.Eggs, new DatabaseEgg[0]);
+            await InitialiseUsersField(x => x.Inventory, new DatabaseInventoryItem[0]);
+            await InitialiseUsersField(x => x.Eggs, new DatabaseEgg[0]);
+            await InitialiseUsersField(x => x.DiscordStatistics, new UserDiscordStats());
+            await InitialiseUsersField(x => x.Garden, new Garden());
+            Console.WriteLine("Users initialised");
+        }
+        private async Task InitialiseUsersField(Expression<Func<User, object>> field, object defaultValue) => await Users.UpdateManyAsync(Builders<User>.Filter.Exists(field, false), Builders<User>.Update.Set(field, defaultValue));
+        private Task OnComponentInteract(DiscordClient c, ComponentInteractionCreateEventArgs e)
+        {
+            _ = Task.Run(async () =>
             {
-                case "fish":
-                    await FishingCommands.OnFish(c, e);
-                    break;
-                case "aboutGeneral":
-                    await HelpCommands.GoAboutGeneral(e);
-                    break;
-                case "aboutCreatures":
-                    await HelpCommands.GoAboutCreatures(e);
-                    break;
-                case "aboutFishing":
-                    await HelpCommands.GoAboutFishing(e);
-                    break;
-                case "aboutCommands":
-                    await HelpCommands.GoAboutHelp(e);
-                    break;
-                default:
-                    break;
-            }
+                if (HelpCommands.helpTabs.ContainsKey(e.Id))
+                {
+                    await HelpCommands.GoToHelpTab(e);
+                    return;
+                }
+                switch (e.Id)
+                {
+                    case "fish":
+                        await FishingCommands.OnFish(e);
+                        break;
+                    default:
+                        Console.WriteLine("unknown component reaction: " + e.Id);
+                        break;
+                }
+            });
+            return Task.CompletedTask;
         }
     }
 }

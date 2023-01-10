@@ -18,6 +18,6 @@ namespace SAIYA
         [JsonProperty("databaseName")]
         public string DatabaseName { get; private set; }
         [JsonProperty("slashCommandGuild")]
-        public string SlashCommandGuild { get; private set; }
+        public ulong? SlashCommandGuild { get; private set; }
     }
 }

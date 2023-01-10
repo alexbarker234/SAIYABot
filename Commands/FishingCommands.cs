@@ -35,7 +35,7 @@ namespace SAIYA.Commands
                 await ctx.CreateResponseAsync(InteractionResponseType.ChannelMessageWithSource, regularInteraction);
             }
         }
-        public static async Task OnFish(DiscordClient c, ComponentInteractionCreateEventArgs e)
+        public static async Task OnFish(ComponentInteractionCreateEventArgs e)
         {
             await TryFish(e);
         }

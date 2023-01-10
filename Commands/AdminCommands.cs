@@ -61,5 +61,18 @@ namespace SAIYA.Commands
             }
             timer.Dispose();
         }
+        [Command("broadcast")]
+        public async Task Broadcast(CommandContext ctx)
+        {
+            if (ctx.User.Id != 283182274474672128) return;
+
+            ulong id = 953634357803884606;
+            string message = "Hello! My abilities have expanded! Check out /help to view the new garden commands";
+            var channel = Bot.Client.Guilds.Values.FirstOrDefault(x => x.Channels.ContainsKey(id))?.Channels[id];
+            if (channel != null)
+            {
+                await channel.SendMessageAsync(message);
+            }
+        }
     }
 }
