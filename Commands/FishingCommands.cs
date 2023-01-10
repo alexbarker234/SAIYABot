@@ -42,33 +42,33 @@ namespace SAIYA.Commands
         public static Dictionary<ulong, DateTime> fishCooldowns = new();
         private static async Task TryFish(ComponentInteractionCreateEventArgs e)
         {
-
-
             bool onCD = false;
-            if (fishCooldowns.ContainsKey(e.User.Id) && DateTime.Now.Subtract(fishCooldowns[e.User.Id]).TotalSeconds < 3) onCD = true;
-            fishCooldowns[e.User.Id] = DateTime.Now;
 
+            DateTime interactionCreated = e.Interaction.CreationTimestamp.UtcDateTime;
 
-            var fishButtonOff = new DiscordButtonComponent(ButtonStyle.Danger, "fish", "Fish", true);
-            var fishButtonOn = new DiscordButtonComponent(ButtonStyle.Primary, "fish", "Fish", false);
+            int milleCD = (int)interactionCreated.Subtract(fishCooldowns[e.User.Id]).TotalMilliseconds;
+            if (fishCooldowns.ContainsKey(e.User.Id) && milleCD < 3000) onCD = true;
+            else fishCooldowns[e.User.Id] = interactionCreated;
 
+            var fishButtonOn = new DiscordButtonComponent(ButtonStyle.Primary, "fish", "Fish");
 
             try
             {
                 await e.Interaction.CreateResponseAsync(InteractionResponseType.DeferredMessageUpdate);
 
-                // FISH
+                DiscordEmbedBuilder embed = new DiscordEmbedBuilder(e.Message.Embeds[0]);
+                embed.ClearFields();
+
                 if (!onCD)
                 {
+                    // FISH
                     User user = await User.GetOrCreateUser(e.User.Id, e.Guild.Id);
 
                     List<Fish> fished = new();
-                    if (Bot.rand.NextDouble() < 0.33)
+                    if (Bot.rand.NextDouble() < user.CalculateStats().fishChance)
                     {
                         if (TryChooseFish(user, out Fish fish)) fished.Add(fish);
                     }
-
-                    // CONSTRUCT MESSAGE
 
                     string caughtString = "";
                     foreach (Fish fish in fished)
@@ -80,38 +80,22 @@ namespace SAIYA.Commands
                     }
                     if (caughtString == "") caughtString = "Nothing :(";
 
-
                     // UPDATE USER IN DB - user object is now old
                     var update = Builders<User>.Update
                         .Inc(x => x.Statistics.FishCaught, fished.Count)
                         .Inc(x => x.Statistics.TimesFished, 1);
                     await Bot.Users.UpdateOneAsync(x => x.UserID == user.UserID && x.GuildID == user.GuildID, update);
 
-
-                    DiscordEmbedBuilder embed = new DiscordEmbedBuilder(e.Message.Embeds[0]);
-                    embed.ClearFields();
                     embed.AddField("You caught...", caughtString);
-
-                    DiscordWebhookBuilder web = new DiscordWebhookBuilder();
-                    web.AddEmbed(embed);
-                    web.AddComponents(fishButtonOff);
-
-
-                    await e.Interaction.EditOriginalResponseAsync(web, Enumerable.Empty<DiscordAttachment>());
-
-                    // REMOVE CD
-                    _ = Task.Factory.StartNew(async () =>
-                    {
-                        Thread.Sleep(3000);
-                        web.ClearComponents();
-                        web.AddComponents(fishButtonOn);
-                        await e.Interaction.EditOriginalResponseAsync(web, Enumerable.Empty<DiscordAttachment>());
-                    });
                 }
-                else
-                {
-                    await e.Interaction.CreateFollowupMessageAsync(new DiscordFollowupMessageBuilder { Content = "You are on Cooldown!" }.AsEphemeral(true));
-                }
+                else embed.AddField("Cooldown", "You are on cooldown!");
+                embed.AddField("Can fish again in: ", $"<t:{fishCooldowns[e.User.Id].AddMilliseconds(3000).ToElapsedSeconds()}:R>");
+
+                DiscordWebhookBuilder web = new DiscordWebhookBuilder();
+                web.AddEmbed(embed);
+                web.AddComponents(fishButtonOn);
+
+                await e.Interaction.EditOriginalResponseAsync(web, Enumerable.Empty<DiscordAttachment>());
             }
             catch (DSharpPlus.Exceptions.BadRequestException error)
             {

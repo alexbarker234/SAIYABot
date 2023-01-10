@@ -1,5 +1,6 @@
 ﻿using DSharpPlus;
 using DSharpPlus.CommandsNext;
+using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.SlashCommands;
 using Microsoft.Extensions.Logging;
@@ -29,6 +30,9 @@ namespace SAIYA
         public static HttpClient httpClient { get; private set; }
         // CONFIG
         public static ConfigJson botConfig { get; private set; }
+
+        // PROPERTIES
+        public static DiscordEmoji CreditEmoji => Utilities.GetEmojiFromWarehouse(Client, "flarin", "💰");
 
         public Bot() => RunAsync().GetAwaiter().GetResult();
         private async Task RunAsync()

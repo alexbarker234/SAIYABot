@@ -6,6 +6,7 @@ namespace SAIYA.Content.Items
     {
         public sealed override ItemTag Tag => ItemTag.Fish;
         public virtual double Weight(User user) => 0;
+        public sealed override bool Buyable => false;
     }
 
     // CONTENT

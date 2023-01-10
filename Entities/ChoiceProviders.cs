@@ -29,7 +29,21 @@ namespace SAIYA.Entities
         public async Task<IEnumerable<DiscordApplicationCommandOptionChoice>> Provider()
             => new DiscordApplicationCommandOptionChoice[] {
                     new DiscordApplicationCommandOptionChoice("Fish", (int)SellCategory.Fish),
+                    new DiscordApplicationCommandOptionChoice("Plants", (int)SellCategory.Plants),
                 };
+    }
+    public class BuyAutocomplete : IAutocompleteProvider
+    {
+        public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+            => ItemLoader.items.Values.Where(x => x.Buyable).OrderBy(x => x.Tag).Select(x => new DiscordAutoCompleteChoice($"{x.Name}: 💰{x.Price}", x.Name)).ToList();
+    }
+    public class SellAutocomplete : IAutocompleteProvider
+    {
+        public async Task<IEnumerable<DiscordAutoCompleteChoice>> Provider(AutocompleteContext ctx)
+        {
+            var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
+            return user.Inventory.Where(x => x.Count > 0).OrderBy(x => x.Item.Tag).Select(x => new DiscordAutoCompleteChoice(x.Name, x.Name)).ToList();
+        }
     }
     public class LeaderboardOption : IChoiceProvider
     {

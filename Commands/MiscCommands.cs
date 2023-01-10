@@ -64,7 +64,7 @@ namespace SAIYA.Commands
                 userList.Sort((User x, User y) => -x.BestiaryCompletion.CompareTo(y.BestiaryCompletion));
 
                 int rank = 1;
-                foreach(User user in userList)
+                foreach (User user in userList)
                 {
                     users += $"**{rank++}:** {user.UserID.ToPing()}:\n";
                     details += $"{user.BestiaryCompletion}/{CreatureLoader.creatures.Count} creatures\n";
@@ -121,39 +121,66 @@ namespace SAIYA.Commands
         {
             var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
 
-            List<DatabaseInventoryItem> fishList = user.Inventory.Where(x => x.Item?.Tag == ItemTag.Fish && x.Count != 0).ToList();
-            List<DatabaseInventoryItem> seedList = user.Inventory.Where(x => x.Item?.Tag == ItemTag.Seed && x.Count != 0).ToList();
-            List<DatabaseInventoryItem> plantList = user.Inventory.Where(x => x.Item?.Tag == ItemTag.Plant && x.Count != 0).ToList();
-
-            var creditEmoji = Utilities.GetEmojiFromWarehouse(ctx.Client, "flarin", "💰");
-
-            string fishText = "";
-            string fishValues = "";
-            string fishValuesTotal = "";
-
-            foreach (DatabaseInventoryItem curFish in fishList)
-            {
-                if (ItemLoader.fish.TryGetValue(curFish.Name, out var fish))
-                {
-                    string emoji = Utilities.TryGetEmojiFromWarehouse(Bot.Client, curFish.Name, out var emojiOut) ? emojiOut : "";
-                    fishText += $"{emoji}{curFish.Name}: ***{curFish.Count}***\n";
-                    fishValues += $"{creditEmoji}{fish.Price}\n";
-                    fishValuesTotal += $"{creditEmoji}{fish.Price * curFish.Count}\n";
-                }
-                else Console.WriteLine("error getting fish: " + curFish.Name);
-            }
-            if (fishText == "") fishText = "Nothing :(";
-
+            GetItemListText(user, ItemTag.Fish, out string fishText, out string fishValues);
+            GetItemListText(user, ItemTag.Seed, out string seedText, out string seedValues);
+            GetItemListText(user, ItemTag.Plant, out string plantText, out string plantValues);
 
             DiscordEmbedBuilder embed = new DiscordEmbedBuilder()
                 .WithColor(new DiscordColor("#c252de"))
-                .WithTitle("Inventory")
-                .AddField("Fish", fishText, true);
-            if (fishValues != "")
+                .WithTitle("Inventory");
+
+            if (fishText != "")
             {
+                embed.AddField("Fish", fishText, true);
                 embed.AddField("Fish Values", fishValues, true);
-                embed.AddField("Total", fishValuesTotal, true);
             }
+            if (seedText != "")
+                embed.AddField("Seeds", seedText, false);
+            if (plantText != "")
+                embed.AddField("Plants", plantText, false);
+
+
+            await ctx.CreateResponseAsync(embed, true);
+        }
+        private void GetItemListText(User user, ItemTag tag, out string main, out string values) => GetItemListText(user.Inventory.Where(x => x.Item?.Tag == tag && x.Count != 0).ToList(), out main, out values);
+        private void GetItemListText(List<DatabaseInventoryItem> list, out string main, out string values)
+        {
+            main = "";
+            values = "";
+            foreach (DatabaseInventoryItem item in list)
+            {
+                if (ItemLoader.items.TryGetValue(item.Name, out var itemData))
+                {
+                    string emoji = Utilities.TryGetEmojiFromWarehouse(Bot.Client, item.Name.Replace(" ", ""), out var emojiOut) ? emojiOut : "";
+                    main += $"{emoji}{item.Name}: ***{item.Count}***\n";
+                    values += $"{Bot.CreditEmoji}{itemData.Price}\n";
+                }
+                else Console.WriteLine("error getting item: " + item.Name);
+            }
+        }
+        [SlashCommand("statistics", "check your statistics")]
+        public async Task Statistics(InteractionContext ctx)
+        {
+            var user = await User.GetOrCreateUser(ctx.User.Id, ctx.Guild.Id);
+
+            string titles =
+                $"**Lifetime Credits:**\n" +
+                $"**Items Sold:**\n" +
+                $"**Items Bought:**\n" +
+                $"**Fish Caught:**\n" +
+                $"**Times Fished:**\n" +
+                $"**Total Messages:**";
+            string values = 
+                $"{Bot.CreditEmoji}{user.Statistics.LifetimeCredits}\n" +
+                $"{user.Statistics.ItemsSold}\n" +
+                $"{user.Statistics.ItemsBought}\n" +
+                $"{user.Statistics.FishCaught}\n" +
+                $"{user.Statistics.TimesFished}\n" +
+                $"{user.Statistics.Messages}";
+            DiscordEmbedBuilder embed = new DiscordEmbedBuilder();
+            embed.WithTitle($"{ctx.Member.DisplayName}'s Bank Account");
+            embed.AddField("Statistic", titles, true);
+            embed.AddField("Value", values, true);
             await ctx.CreateResponseAsync(embed, true);
         }
     }

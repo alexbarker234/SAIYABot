@@ -132,25 +132,29 @@ namespace SAIYA.Models
             else update = update.Inc(x => x.Creatures[existingIndex].Count, 1);
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
         }
-        public async Task AddToInventory(DatabaseInventoryItem item)
+        public async Task AddToInventory(string name, int amount, bool isBuy = false) => await AddToInventory(new DatabaseInventoryItem(name, amount), isBuy);
+        public async Task AddToInventory(DatabaseInventoryItem item, bool isBuy = false)
         {
             int existingIndex = HasItem(Inventory, item.Name);
             var update = Builders<User>.Update.Push(x => x.Inventory, item);
             if (existingIndex != -1)
                 update = Builders<User>.Update.Inc(x => x.Inventory[existingIndex].Count, item.Count);
+            if (isBuy) update = update.Inc(x => x.Statistics.ItemsSold, item.Count);
 
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
         }
-        public void AddToInventoryDefinition(DatabaseInventoryItem item, ref UpdateDefinition<User> updateDefinition)
+        public void AddToInventoryDefinition(string name, int amount, ref UpdateDefinition<User> updateDefinition, bool isBuy = false) => AddToInventoryDefinition(new DatabaseInventoryItem(name, amount), ref updateDefinition,isBuy);
+        public void AddToInventoryDefinition(DatabaseInventoryItem item, ref UpdateDefinition<User> updateDefinition, bool isBuy = false)
         {
             int existingIndex = HasItem(Inventory, item.Name);
             if (existingIndex != -1)
                 updateDefinition = updateDefinition.Inc(x => x.Inventory[existingIndex].Count, item.Count);
             else
                 updateDefinition = updateDefinition.Push(x => x.Inventory, item);
+            if (isBuy) updateDefinition = updateDefinition.Inc(x => x.Statistics.ItemsSold, item.Count);
         }
         /// <summary> Returns the amount successfully removed </summary>
-        public async Task<int> RemoveFromInventory(DatabaseInventoryItem item, int toRemove)
+        public async Task<int> RemoveFromInventory(DatabaseInventoryItem item, int toRemove, bool isSale = false)
         {
             int index = HasItem(Inventory, item.Name);
             if (index == -1) return 0;
@@ -158,6 +162,7 @@ namespace SAIYA.Models
             toRemove = Math.Min(toRemove, Inventory[index].Count);
 
             var update = Builders<User>.Update.Inc(x => x.Inventory[index].Count, -toRemove);
+            if (isSale) update = update.Inc(x => x.Statistics.ItemsSold, toRemove);
             await Bot.Users.UpdateOneAsync(user => user.UserID == UserID && user.GuildID == GuildID, update);
             return toRemove;
         }
@@ -204,8 +209,16 @@ namespace SAIYA.Models
 
         [BsonElement("timesFished")]
         public int TimesFished { get; set; }
+
         [BsonElement("lifetimeCredits")]
         public int LifetimeCredits { get; set; }
+
+        [BsonElement("itemsSold")]
+        public int ItemsSold { get; set; }
+
+        [BsonElement("itemsBought")]
+        public int ItemsBought { get; set; }
+
         [BsonExtraElements]
         public BsonDocument CatchAll { get; set; }
     }
@@ -234,8 +247,8 @@ namespace SAIYA.Models
         [BsonIgnore]
         public Plant Plant => ItemLoader.plants.GetValueOrDefault(Name);
 
-        public double? WaterPercent(User user) => Plant == null ? null : 1 - Math.Clamp((DateTime.UtcNow - LastWatered).TotalSeconds / (Plant.WaterRate.TotalSeconds * user.CalculateStats().GardenWaterRateMultiplier),0,1);
-        public double? GrowthPercent(User user) => Plant == null ? null : Math.Clamp((DateTime.UtcNow - PlantedTime).TotalSeconds / (Plant.GrowTime.TotalSeconds * user.CalculateStats().gardenGrowthRate),0,1);
+        public double? WaterPercent(User user) => Plant == null ? null : 1 - Math.Clamp((DateTime.UtcNow - LastWatered).TotalSeconds / (Plant.WaterRate.TotalSeconds * user.CalculateStats().GardenWaterRateMultiplier), 0, 1);
+        public double? GrowthPercent(User user) => Plant == null ? null : Math.Clamp((DateTime.UtcNow - PlantedTime).TotalSeconds / (Plant.GrowTime.TotalSeconds * user.CalculateStats().gardenGrowthRate), 0, 1);
 
         [BsonExtraElements]
         public BsonDocument CatchAll { get; set; }

@@ -95,7 +95,7 @@ namespace SAIYA.Commands
                 GetCommandHelp("creatures", "View the creatures you own") +
                 GetCommandHelp("bestiary", "View all the creatures in this world\nAlso lists their availability")
                 , true)
-            .AddField(Utilities.GetEmojiFromWarehouse(Bot.Client, "flarin", "💰") + "Economy",
+            .AddField(Bot.CreditEmoji + "Economy",
                 GetCommandHelp("sell", "sell an item") +
                 GetCommandHelp("sellall", "sell all of an item type")
                 , true)
