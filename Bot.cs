@@ -89,6 +89,8 @@ namespace SAIYA
             ItemLoader.Load();
             HelpCommands.LoadTabs();
             TimerManager timer = new TimerManager();
+            PingServer.CreateListener();
+
             await WeatherManager.UpdateWeather();
 
             await Client.ConnectAsync();
@@ -99,11 +101,16 @@ namespace SAIYA
         private ConfigJson LoadConfig()
         {
             var fileContents = string.Empty;
-            using (var sr = new StreamReader("config.json", new UTF8Encoding(false)))
+
+#if DEBUG
+            string file = "configDEV.json";
+#else
+            string file = "config.json";
+#endif
+            using (var sr = new StreamReader(file, new UTF8Encoding(false)))
                 fileContents = sr.ReadToEnd();
             return JsonConvert.DeserializeObject<ConfigJson>(fileContents);
         }
-
 
         private Task OnClientReady(DiscordClient client, ReadyEventArgs e)
         {
